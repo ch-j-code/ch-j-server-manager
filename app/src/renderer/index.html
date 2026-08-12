@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <title>CH-J Server Manager</title>
+  <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="window-titlebar" aria-hidden="true">
+    <span class="window-titlebar-mark">CJ</span>
+    <span class="window-titlebar-title">CH-J Server Manager</span>
+  </div>
+  <div id="vaultOverlay" class="vault-overlay">
+    <form id="vaultForm" class="vault-dialog">
+      <select id="vaultLanguageSelect" class="vault-language" aria-label="Jazyk" data-i18n-aria-label="settings.language" disabled><option value="cs" data-i18n="settings.czech">Čeština</option><option value="de" data-i18n="settings.german">Deutsch</option><option value="en" data-i18n="settings.english">English</option></select>
+      <div class="vault-mark">CJ</div>
+      <span id="vaultModeText" class="eyebrow" data-i18n="vault.storage">ŠIFROVANÉ LOKÁLNÍ ÚLOŽIŠTĚ</span>
+      <h1 id="vaultTitle" data-i18n="vault.unlockTitle">Odemknout Server Manager</h1>
+      <p id="vaultDescription" data-i18n="vault.unlockIntro">Zadejte hlavní heslo. Heslo se neukládá na disk.</p>
+      <label><span data-i18n="vault.password">Hlavní heslo</span><input id="vaultPassword" type="password" autocomplete="current-password" required></label>
+      <label id="vaultConfirmLabel" hidden><span data-i18n="vault.confirmPassword">Potvrzení hesla</span><input id="vaultPasswordConfirm" type="password" autocomplete="new-password"></label>
+      <p id="vaultMessage" class="form-message" aria-live="polite"></p>
+      <button id="vaultSubmit" class="button primary wide" type="submit" data-i18n="vault.unlock">Odemknout</button>
+      <button id="showVaultResetButton" class="button ghost wide vault-reset-link" type="button" hidden data-i18n="vault.forgot">Zapomenuté heslo / obnovit vault</button>
+      <div id="vaultResetPanel" class="vault-reset-panel" hidden>
+        <strong data-i18n="vault.resetIrreversible">Obnovení nelze vrátit zpět</strong>
+        <p data-i18n="vault.resetDescription">Smažou se všechny serverové profily, uložené host fingerprinty a další šifrovaná data. Instalované pluginy a nastavení aktualizací zůstanou zachované.</p>
+        <label><span data-i18n="vault.resetInstruction">Pro potvrzení napište SMAZAT</span><input id="vaultResetConfirmation" maxlength="6" autocomplete="off" spellcheck="false"></label>
+        <div class="reset-actions"><button id="cancelVaultResetButton" class="button" type="button" data-i18n="vault.cancel">Zrušit</button><button id="confirmVaultResetButton" class="button danger" type="button" data-i18n="vault.resetAction">Smazat data a obnovit heslo</button></div>
+      </div>
+    </form>
+  </div>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">CJ</div>
+        <div><strong>CH-J</strong><span>Server Manager</span></div>
+      </div>
+      <nav aria-label="Hlavní navigace" data-i18n-aria-label="nav.aria">
+        <button class="nav-button active" data-view="overview"><span>●</span><span class="nav-label" data-i18n="nav.overview">Přehled</span></button>
+        <button class="nav-button" data-view="terminal"><span>&gt;_</span><span class="nav-label" data-i18n="nav.terminal">Terminál</span></button>
+        <button class="nav-button" data-view="profiles"><span>▤</span><span class="nav-label" data-i18n="nav.servers">Servery</span></button>
+        <button class="nav-button" data-view="updates"><span>↻</span><span class="nav-label" data-i18n="nav.updates">Aktualizace</span></button>
+        <button class="nav-button" data-view="plugins"><span>◇</span><span class="nav-label" data-i18n="nav.plugins">Pluginy</span></button>
+        <button class="nav-button" data-view="settings"><span>⌘</span><span class="nav-label" data-i18n="nav.settings">Nastavení</span></button>
+      </nav>
+      <div class="sidebar-footer">
+        <span class="status-dot"></span>
+        <div><strong data-i18n="app.coreRunning">Core běží</strong><span id="sidebarVersion">v0.0.1</span></div>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div><span class="eyebrow" data-i18n="app.newArchitecture">NOVÁ ARCHITEKTURA</span><h1 id="viewTitle">Přehled Core</h1></div>
+        <div class="topbar-actions"><div class="runtime-badge"><span class="status-dot"></span><span id="runtimeText" data-i18n="app.initializing">Inicializace…</span></div><button id="lockVaultButton" class="button ghost" data-i18n="app.lock">Zamknout</button></div>
+      </header>
+
+      <section class="view active" data-view-panel="overview">
+        <div class="hero">
+          <div><span class="eyebrow">CORE v0.0.1</span><h2 data-i18n="overview.cleanTitle">Čistý základ nové aplikace</h2><p data-i18n="overview.cleanDescription">Oddělené služby, omezené IPC, plugin runtime a bezpečný aktualizační kanál.</p></div>
+          <div class="hero-orbit"><span>CORE</span></div>
+        </div>
+        <div class="card-grid">
+          <article class="card"><span class="card-icon blue">◎</span><div><small data-i18n="overview.coreApi">Core API</small><strong id="coreApiValue">—</strong><p data-i18n="overview.coreApiDescription">Stabilní aplikační kontrakt</p></div></article>
+          <article class="card"><span class="card-icon green">#</span><div><small data-i18n="overview.dataSchema">Data schema</small><strong id="dataSchemaValue">—</strong><p data-i18n="overview.dataSchemaDescription">Verzované uživatelské úložiště</p></div></article>
+          <article class="card"><span class="card-icon violet">◇</span><div><small data-i18n="overview.installedPlugins">Nainstalované pluginy</small><strong id="pluginCountValue">0</strong><p data-i18n="overview.noToolsNeeded">Core funguje i bez Tools</p></div></article>
+        </div>
+        <article class="panel roadmap-panel">
+          <div><span class="eyebrow" data-i18n="overview.currentSlice">AKTUÁLNÍ ŘEZ</span><h3 data-i18n="overview.sliceTitle">Vault + profily + SSH terminál</h3><p data-i18n="overview.sliceDescription">Funkční připojení s povinnou kontrolou host klíče a odděleným SessionManagerem.</p></div>
+          <div class="progress"><span></span></div>
+        </article>
+      </section>
+
+      <section class="view" data-view-panel="terminal">
+        <div class="section-heading"><div><span class="eyebrow" data-i18n="terminal.eyebrow">SSH SESSION MANAGER</span><h2 data-i18n="terminal.title">Interaktivní terminál</h2></div><span id="terminalState" class="connection-badge disconnected" data-i18n="terminal.disconnected">Odpojeno</span></div>
+        <article class="panel terminal-panel">
+          <div class="terminal-toolbar">
+            <label><span data-i18n="terminal.server">Server</span><select id="terminalProfileSelect"><option value="" data-i18n="terminal.selectServer">Vyberte server…</option></select></label>
+            <label id="credentialLabel"><span id="credentialLabelText" data-i18n="terminal.password">Heslo</span><input id="terminalCredential" type="password" autocomplete="off" placeholder="SSH heslo" data-i18n-placeholder="terminal.sshPassword"></label>
+            <button id="connectButton" class="button primary" type="button" data-i18n="terminal.connect">Připojit</button>
+            <button id="disconnectButton" class="button" type="button" disabled data-i18n="terminal.disconnect">Odpojit</button>
+          </div>
+          <div id="terminalHost" class="terminal-host" data-i18n="terminal.noProfile">Nejprve vytvořte profil serveru.</div>
+          <div id="terminal" aria-label="SSH terminál" data-i18n-aria-label="terminal.aria"></div>
+        </article>
+      </section>
+
+      <section class="view" data-view-panel="profiles">
+        <div class="section-heading"><div><span class="eyebrow" data-i18n="profiles.eyebrow">ŠIFROVANÉ PROFILY</span><h2 data-i18n="profiles.title">Správa serverů</h2></div><button id="newProfileButton" class="button" data-i18n="profiles.new">Nový server</button></div>
+        <div class="profiles-layout">
+          <article class="panel profile-list-panel">
+            <div id="profileRows" class="profile-rows"></div>
+          </article>
+          <form id="profileForm" class="panel profile-form">
+            <input id="profileId" type="hidden">
+            <label><span data-i18n="profiles.name">Název</span><input id="profileLabel" maxlength="100" placeholder="Produkční server" data-i18n-placeholder="profiles.namePlaceholder" required></label>
+            <div class="form-columns"><label><span data-i18n="profiles.host">Host / IP</span><input id="profileHost" placeholder="192.168.1.20" required></label><label><span data-i18n="profiles.port">Port</span><input id="profilePort" type="number" min="1" max="65535" value="22" required></label></div>
+            <label><span data-i18n="profiles.user">Uživatel</span><input id="profileUsername" maxlength="128" placeholder="root" required></label>
+            <label><span data-i18n="profiles.auth">Ověření</span><select id="profileAuthMethod"><option value="password" data-i18n="profiles.authPassword">Heslo při připojení</option><option value="privateKey" data-i18n="profiles.authKey">Soukromý klíč</option></select></label>
+            <div id="passwordStorageField" class="password-storage-field">
+              <label class="check-label"><input id="profileStorePassword" type="checkbox"><span data-i18n="profiles.storePassword">Uložit heslo do šifrovaného vaultu</span></label>
+              <label><span data-i18n="profiles.storedPassword">SSH heslo</span><input id="profileStoredPassword" type="password" maxlength="1024" autocomplete="new-password" placeholder="Zadejte heslo k uložení" data-i18n-placeholder="profiles.storePasswordPlaceholder" disabled></label>
+              <small data-i18n="profiles.passwordSecurity">Heslo se ukládá pouze uvnitř šifrovaného vaultu.</small>
+            </div>
+            <div id="privateKeyField" class="key-field" hidden><label><span data-i18n="profiles.privateKey">Soukromý klíč</span><input id="profilePrivateKeyPath" readonly placeholder="Vyberte soubor…" data-i18n-placeholder="profiles.selectFile"></label><button id="selectPrivateKeyButton" class="button" type="button" data-i18n="profiles.select">Vybrat</button></div>
+            <p id="profileMessage" class="form-message" aria-live="polite"></p>
+            <div class="button-row"><button class="button primary" type="submit" data-i18n="profiles.save">Uložit profil</button><button id="deleteProfileButton" class="button danger" type="button" hidden data-i18n="profiles.delete">Smazat</button></div>
+          </form>
+        </div>
+      </section>
+
+      <section class="view" data-view-panel="updates">
+        <div class="section-heading"><div><span class="eyebrow" data-i18n="updates.eyebrow">HASH URL PROVIDER</span><h2 data-i18n="updates.title">Aktualizace Core</h2></div><div class="catalog-controls"><label><span data-i18n="updates.channelFilter">Kanál</span><select id="updateViewChannelSelect"><option value="alpha">Alpha</option><option value="beta">Beta</option><option value="stable">Stable</option><option value="all" data-i18n="channels.all">Vše</option></select></label><span class="alpha-badge">LAN</span></div></div>
+        <article class="panel update-panel">
+          <div class="update-version"><small data-i18n="updates.installed">Nainstalovaná verze</small><strong id="currentVersion">—</strong><span id="updateChannel">kanál alpha</span></div>
+          <div class="update-copy"><h3 id="updateHeadline" data-i18n="updates.ready">Připraveno ke kontrole</h3><p id="updateMessage" data-i18n="updates.integrityIntro">Core ověří platformu, architekturu, velikost a SHA-512.</p><code id="updateHash" hidden></code></div>
+          <div class="button-row">
+            <button id="checkUpdateButton" class="button primary" data-i18n="updates.check">Zkontrolovat</button>
+            <button id="downloadUpdateButton" class="button" disabled data-i18n="updates.download">Stáhnout a ověřit</button>
+            <button id="installUpdateButton" class="button primary" hidden data-i18n="updates.install">Spustit instalátor</button>
+            <button id="revealUpdateButton" class="button ghost" hidden data-i18n="updates.reveal">Zobrazit soubor</button>
+          </div>
+        </article>
+        <article class="panel release-catalog-panel">
+          <div class="release-catalog-header"><div><span class="eyebrow" data-i18n="updates.catalogEyebrow">KATALOG VYDÁNÍ</span><h3 data-i18n="updates.catalogTitle">Dostupná vydání</h3></div><span id="updateReleaseCount">0</span></div>
+          <div id="updateReleaseRows" class="update-release-rows"><div class="update-release-empty" data-i18n="updates.catalogBeforeCheck">Po kontrole se zde zobrazí všechna kompatibilní vydání.</div></div>
+        </article>
+        <div class="notice"><strong data-i18n="updates.alphaSecurity">Alfa bezpečnostní režim</strong><p data-i18n="updates.alphaDescription">SHA-512 kontroluje integritu stažení. Instalace se nespouští automaticky a zdroj je omezený na povolenou HTTPS doménu.</p></div>
+      </section>
+
+      <section class="view" data-view-panel="plugins">
+        <div class="section-heading"><div><span class="eyebrow" data-i18n="plugins.eyebrow">PLUGIN API 1.0.0</span><h2 data-i18n="plugins.title">Instalované Tools</h2></div><div class="catalog-controls"><label><span data-i18n="plugins.channelFilter">Kanál katalogu</span><select id="pluginViewChannelSelect"><option value="alpha">Alpha</option><option value="beta">Beta</option><option value="stable">Stable</option><option value="all" data-i18n="channels.all">Vše</option></select></label><button id="checkPluginCatalogButton" class="button primary" data-i18n="plugins.checkCatalog">Načíst webový katalog</button></div></div>
+        <article class="panel table-panel">
+          <div class="table-header plugin-table-row"><span data-i18n="plugins.plugin">Plugin</span><span data-i18n="plugins.version">Verze</span><span data-i18n="plugins.permissions">Oprávnění</span><span></span></div>
+          <div id="pluginRows" class="plugin-rows"><div class="empty-state"><strong data-i18n="plugins.none">Zatím žádné pluginy</strong><span data-i18n="plugins.first">První bude System Monitor.</span></div></div>
+        </article>
+        <div class="section-heading plugin-catalog-heading"><div><span class="eyebrow" data-i18n="plugins.webCatalog">WEBOVÝ KATALOG</span><h3 data-i18n="plugins.available">Dostupné pluginy</h3></div><span id="pluginCatalogSource"></span></div>
+        <article class="panel table-panel">
+          <div class="table-header plugin-table-row"><span data-i18n="plugins.plugin">Plugin</span><span data-i18n="plugins.version">Verze</span><span data-i18n="plugins.permissions">Oprávnění</span><span></span></div>
+          <div id="pluginCatalogRows" class="plugin-rows"><div class="plugin-catalog-empty" data-i18n="plugins.catalogBeforeCheck">Nejprve načtěte katalog z povoleného update serveru.</div></div>
+        </article>
+      </section>
+
+      <section class="view" data-view-panel="settings">
+        <div class="section-heading"><div><span class="eyebrow" data-i18n="settings.eyebrow">LOKÁLNÍ KONFIGURACE</span><h2 data-i18n="settings.title">Nastavení Core</h2></div></div>
+        <form id="settingsForm" class="panel settings-panel">
+          <label><span data-i18n="settings.language">Jazyk</span><select id="languageSelect"><option value="cs" data-i18n="settings.czech">Čeština</option><option value="de" data-i18n="settings.german">Deutsch</option><option value="en" data-i18n="settings.english">English</option></select></label>
+          <label><span data-i18n="settings.updateChannel">Kanál aktualizací</span><select id="channelSelect"><option value="alpha">Alpha</option><option value="beta">Beta</option><option value="stable">Stable</option><option value="all" data-i18n="channels.all">Vše</option></select></label>
+          <label><span data-i18n="settings.pluginChannel">Kanál pluginů</span><select id="pluginChannelSelect"><option value="alpha">Alpha</option><option value="beta">Beta</option><option value="stable">Stable</option><option value="all" data-i18n="channels.all">Vše</option></select></label>
+          <label class="check-label"><input id="autoCheckInput" type="checkbox"><span data-i18n="settings.autoCheck">Automaticky kontrolovat při startu</span></label>
+          <div class="field"><span data-i18n="settings.allowedServers">Povolené update servery</span><code id="baseUrlsText"></code></div>
+          <div class="button-row"><button class="button primary" type="submit" data-i18n="settings.save">Uložit nastavení</button><span id="settingsStatus"></span></div>
+        </form>
+        <article class="panel legal-panel">
+          <div><span class="eyebrow" data-i18n="legal.eyebrow">PRÁVNÍ INFORMACE</span><h3 data-i18n="legal.title">Licence a oznámení</h3><p data-i18n="legal.description">CH-J Server Manager je poskytován pod Apache License 2.0. Licence komponent třetích stran zůstávají zachované.</p><small>Copyright © 2026 Josef Chudy · SPDX-License-Identifier: Apache-2.0</small></div>
+          <div class="button-row legal-actions">
+            <button class="button" type="button" data-legal-document="application" data-i18n="legal.application">Licence aplikace</button>
+            <button class="button" type="button" data-legal-document="notice" data-i18n="legal.notice">Autorské oznámení</button>
+            <button class="button" type="button" data-legal-document="thirdParty" data-i18n="legal.thirdParty">Licence třetích stran</button>
+            <button class="button" type="button" data-legal-document="thirdPartyBundle" data-i18n="legal.thirdPartyBundle">Kompletní licenční balík</button>
+            <button class="button ghost" type="button" data-legal-document="electron" data-i18n="legal.electron">Licence Electronu</button>
+            <button class="button ghost" type="button" data-legal-document="chromium" data-i18n="legal.chromium">Licence Chromia</button>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+  <aside id="pluginTaskbar" class="plugin-taskbar" hidden aria-label="Minimalizované pluginy" data-i18n-aria-label="plugins.minimized">
+    <span class="plugin-taskbar-title" data-i18n="plugins.minimized">Minimalizované pluginy</span>
+    <div id="pluginTaskbarItems" class="plugin-taskbar-items"></div>
+  </aside>
+  <script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
+  <script src="../../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

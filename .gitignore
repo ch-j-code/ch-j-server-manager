@@ -1,0 +1,44 @@
+# This repository tracks only the active application and repository metadata.
+/*
+!/.github/
+!/.gitignore
+!/.gitleaks.toml
+!/app/
+
+# macOS and editor metadata
+.DS_Store
+._*
+*.swp
+*.swo
+
+# Dependencies and generated build output
+**/node_modules/
+app/dist/
+plugin-dist/
+**/tmp/
+
+# Published installers and update packages are stored outside Git
+web/sm-ch-j.de.cz.eu/files/**
+!web/sm-ch-j.de.cz.eu/files/.htaccess
+
+# Production configuration and runtime data
+**/config.local.php
+web/sm-ch-j.de.cz.eu/data/*.json
+web/sm-ch-j.de.cz.eu/data/*.lock
+/distrovm.txt
+
+# Local secrets, keys, certificates, databases, and logs
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.sample
+**/*.key
+**/*.pem
+**/*.p12
+**/*.pfx
+**/id_rsa
+**/id_ed25519
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/*.log

@@ -1,0 +1,122 @@
+{
+  "name": "ch-j-server-manager",
+  "version": "0.0.1",
+  "description": "CH-J Server Manager Core",
+  "homepage": "https://www.sm.ch-j.de",
+  "license": "Apache-2.0",
+  "author": "Josef Chudy <josef@ch-j.de>",
+  "desktopName": "ch-j-server-manager",
+  "type": "commonjs",
+  "main": "src/main/index.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --enable-logging",
+    "test": "node --test",
+    "licenses:generate": "node scripts/generateThirdPartyNotices.js",
+    "prepare:release": "npm run licenses:generate && npm run stamp:build",
+    "stamp:build": "node scripts/stampBuild.js",
+    "prebuild": "npm run prepare:release",
+    "build": "electron-builder",
+    "predist:win": "npm run prepare:release",
+    "dist:win": "electron-builder --win nsis --x64",
+    "predist:mac": "npm run prepare:release",
+    "dist:mac": "electron-builder --mac dmg --arm64 && npm run package:mac:installer",
+    "package:mac:installer": "node scripts/packageMacInstaller.js",
+    "predist:linux": "npm run prepare:release",
+    "dist:linux": "electron-builder --linux deb --x64"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "adm-zip": "^0.6.0",
+    "archiver": "^5.3.2",
+    "builder": "^5.0.0",
+    "ssh2": "^1.17.0"
+  },
+  "devDependencies": {
+    "@electron/osx-sign": "^1.3.3",
+    "electron": "^43.3.0",
+    "electron-builder": "^26.15.3",
+    "monaco-editor": "^0.47.0",
+    "ttf2woff": "^3.0.0"
+  },
+  "build": {
+    "appId": "de.ch-j.servermanager",
+    "productName": "CH-J Server Manager",
+    "asar": true,
+    "files": [
+      "src/**",
+      "build/icon.png",
+      "package.json",
+      "LICENSE",
+      "NOTICE",
+      "THIRD_PARTY_NOTICES.txt",
+      "!node_modules/cpu-features/**"
+    ],
+    "extraResources": [
+      {
+        "from": "LICENSE",
+        "to": "licenses/APPLICATION_LICENSE.txt"
+      },
+      {
+        "from": "NOTICE",
+        "to": "licenses/NOTICE.txt"
+      },
+      {
+        "from": "THIRD_PARTY_NOTICES.txt",
+        "to": "licenses/THIRD_PARTY_NOTICES.txt"
+      },
+      {
+        "from": "THIRD_PARTY_LICENSES.zip",
+        "to": "licenses/THIRD_PARTY_LICENSES.zip"
+      },
+      {
+        "from": "node_modules/electron/dist/LICENSE",
+        "to": "licenses/ELECTRON_LICENSE.txt"
+      },
+      {
+        "from": "node_modules/electron/dist/LICENSES.chromium.html",
+        "to": "licenses/CHROMIUM_LICENSES.html"
+      }
+    ],
+    "afterPack": "scripts/afterPack.js",
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "icon": "build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "target": [
+        "deb"
+      ],
+      "category": "Utility",
+      "synopsis": "SSH and server management application",
+      "maintainer": "Josef Chudy <josef@ch-j.de>",
+      "syncDesktopName": true
+    }
+  }
+}

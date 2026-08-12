@@ -1,0 +1,235 @@
+"use strict";
+
+(function exposeI18n(root, factory) {
+  const api = factory();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  else {
+    root.CHJ_I18N = api;
+    root.chjI18n = api.createI18n("cs");
+  }
+})(typeof globalThis !== "undefined" ? globalThis : this, () => {
+  const catalogs = {
+    cs: {
+      "nav.overview": "Přehled", "nav.terminal": "Terminál", "nav.servers": "Servery", "nav.updates": "Aktualizace", "nav.plugins": "Pluginy", "nav.settings": "Nastavení", "nav.aria": "Hlavní navigace",
+      "vault.storage": "ŠIFROVANÉ LOKÁLNÍ ÚLOŽIŠTĚ", "vault.unlockTitle": "Odemknout Server Manager", "vault.unlockIntro": "Zadejte hlavní heslo. Heslo se neukládá na disk.", "vault.password": "Hlavní heslo", "vault.confirmPassword": "Potvrzení hesla", "vault.unlock": "Odemknout", "vault.forgot": "Zapomenuté heslo / obnovit vault", "vault.resetIrreversible": "Obnovení nelze vrátit zpět", "vault.resetDescription": "Smažou se všechny serverové profily, uložené host fingerprinty a další šifrovaná data. Instalované pluginy a nastavení aktualizací zůstanou zachované.", "vault.resetInstruction": "Pro potvrzení napište SMAZAT", "vault.cancel": "Zrušit", "vault.resetAction": "Smazat data a obnovit heslo",
+      "app.newArchitecture": "NOVÁ ARCHITEKTURA", "app.initializing": "Inicializace…", "app.lock": "Zamknout", "app.coreRunning": "Core běží",
+      "overview.cleanTitle": "Čistý základ nové aplikace", "overview.cleanDescription": "Oddělené služby, omezené IPC, plugin runtime a bezpečný aktualizační kanál.", "overview.coreApi": "Core API", "overview.coreApiDescription": "Stabilní aplikační kontrakt", "overview.dataSchema": "Datové schéma", "overview.dataSchemaDescription": "Verzované uživatelské úložiště", "overview.installedPlugins": "Nainstalované pluginy", "overview.noToolsNeeded": "Core funguje i bez Tools", "overview.currentSlice": "AKTUÁLNÍ ŘEZ", "overview.sliceTitle": "Vault + profily + SSH terminál", "overview.sliceDescription": "Funkční připojení s povinnou kontrolou host klíče a odděleným SessionManagerem.",
+      "terminal.eyebrow": "SSH SESSION MANAGER", "terminal.title": "Interaktivní terminál", "terminal.disconnected": "Odpojeno", "terminal.connecting": "Připojování…", "terminal.connected": "Připojeno", "terminal.connectionError": "Chyba připojení", "terminal.error": "Chyba", "terminal.server": "Server", "terminal.selectServer": "Vyberte server…", "terminal.password": "Heslo", "terminal.sshPassword": "SSH heslo", "terminal.passphrase": "Passphrase (volitelná)", "terminal.keyPassphrase": "Passphrase klíče", "terminal.connect": "Připojit", "terminal.disconnect": "Odpojit", "terminal.noProfile": "Nejprve vytvořte profil serveru.", "terminal.aria": "SSH terminál", "terminal.libraryMissing": "Knihovna terminálu není dostupná.", "terminal.welcome": "Vyberte server a spusťte SSH připojení.", "terminal.connectingTo": "Připojuji {target}…", "terminal.passwordAuth": "ověření heslem", "terminal.vaultLocked": "Vault byl zamknut.",
+      "profiles.eyebrow": "ŠIFROVANÉ PROFILY", "profiles.title": "Správa serverů", "profiles.new": "Nový server", "profiles.none": "Zatím není uložen žádný server.", "profiles.name": "Název", "profiles.namePlaceholder": "Produkční server", "profiles.host": "Host / IP", "profiles.port": "Port", "profiles.user": "Uživatel", "profiles.auth": "Ověření", "profiles.authPassword": "Heslo při připojení", "profiles.authKey": "Soukromý klíč", "profiles.privateKey": "Soukromý klíč", "profiles.selectFile": "Vyberte soubor…", "profiles.select": "Vybrat", "profiles.save": "Uložit profil", "profiles.delete": "Smazat", "profiles.key": "klíč", "profiles.password": "heslo", "profiles.saved": "Profil byl uložen.", "profiles.deleteConfirm": "Opravdu smazat tento profil serveru?",
+      "updates.eyebrow": "REPOZITÁŘ AKTUALIZACÍ", "updates.title": "Aktualizace Core", "updates.installed": "Nainstalovaná verze", "updates.channel": "kanál {channel}", "updates.ready": "Připraveno ke kontrole", "updates.integrityIntro": "Core ověří platformu, architekturu, velikost a SHA-512.", "updates.check": "Zkontrolovat", "updates.download": "Stáhnout a ověřit", "updates.reveal": "Zobrazit soubor", "updates.alphaSecurity": "Alfa bezpečnostní režim", "updates.alphaDescription": "SHA-512 kontroluje integritu stažení. Instalace se nespouští automaticky a zdroj je omezený na povolenou HTTPS doménu.", "updates.downloaded": "Vydání v{version} bylo staženo a ověřeno", "updates.available": "Je dostupná verze {version}", "updates.availableFallback": "Aktualizace je připravena ke stažení a ověření.", "updates.current": "Používáte aktuální verzi", "updates.noNewer": "Na zvoleném kanálu není novější vydání.", "updates.checking": "Kontroluji…", "updates.checkingServer": "Kontrola repozitáře aktualizací", "updates.tryingEndpoints": "Zkouším povolený HTTPS endpoint…", "updates.checkFailed": "Kontrola se nezdařila", "updates.downloading": "Stahuji…", "updates.downloadRejected": "Stažení bylo odmítnuto",
+      "plugins.eyebrow": "PLUGIN API 1.0.0", "plugins.title": "Instalované Tools", "plugins.install": "Instalovat z katalogu", "plugins.plugin": "Plugin", "plugins.version": "Verze", "plugins.permissions": "Oprávnění", "plugins.none": "Zatím žádné pluginy", "plugins.first": "První bude System Monitor.", "plugins.noPermissions": "bez oprávnění",
+      "settings.eyebrow": "LOKÁLNÍ KONFIGURACE", "settings.title": "Nastavení Core", "settings.language": "Jazyk", "settings.czech": "Čeština", "settings.german": "Deutsch", "settings.english": "English", "settings.updateChannel": "Kanál aktualizací", "settings.autoCheck": "Automaticky kontrolovat při startu", "settings.allowedServers": "Povolené update servery", "settings.save": "Uložit nastavení", "settings.saved": "Uloženo",
+      "vault.damagedMode": "OBNOVA ŠIFROVANÉHO ÚLOŽIŠTĚ", "vault.damagedTitle": "Vault je neúplný", "vault.damagedDescription": "Chybí jeden ze souborů vaultu. Data nebudou automaticky přepsána.", "vault.setupMode": "PRVNÍ NASTAVENÍ VAULTU", "vault.lockedMode": "VAULT JE ZAMČENÝ", "vault.setupTitle": "Vytvořit hlavní heslo", "vault.setupDescription": "Zvolte hlavní heslo o délce 4 až 64 znaků. Bez hesla nelze šifrovaná data obnovit.", "vault.lockedDescription": "Vault už existuje. Zadejte jeho hlavní heslo pro přístup k uloženým serverům.", "vault.create": "Vytvořit vault", "vault.passwordLength": "Hlavní heslo musí mít 4 až 64 znaků.", "vault.passwordMismatch": "Hesla se neshodují.", "vault.creating": "Vytvářím…", "vault.unlocking": "Odemykám…", "vault.typeDelete": "Pro potvrzení napište přesně SMAZAT.", "vault.finalResetConfirm": "Poslední potvrzení: opravdu smazat všechna šifrovaná uživatelská data?", "vault.deleting": "Mažu…", "vault.resetDone": "Vault byl obnoven. Vytvořte nové hlavní heslo.",
+      "ssh.unknownHost": "Server {host}:{port} zatím není důvěryhodný.\n\nSHA-256 otisk:\n{fingerprint}\n\nOvěřte otisk jiným kanálem. Chcete jej uložit a pokračovat?", "ssh.trustFailed": "Host klíč se nepodařilo uložit.", "ssh.keyChanged": "VAROVÁNÍ: SSH host klíč se změnil. Připojení bylo zablokováno.", "ssh.knownKey": "Známý", "ssh.newKey": "Nový", "ssh.failed": "Připojení selhalo.",
+      "errors.unknown": "Neznámá chyba", "errors.initialization": "Chyba inicializace"
+    },
+    de: {
+      "nav.overview": "Übersicht", "nav.terminal": "Terminal", "nav.servers": "Server", "nav.updates": "Updates", "nav.plugins": "Plugins", "nav.settings": "Einstellungen", "nav.aria": "Hauptnavigation",
+      "vault.storage": "VERSCHLÜSSELTER LOKALER SPEICHER", "vault.unlockTitle": "Server Manager entsperren", "vault.unlockIntro": "Geben Sie das Hauptpasswort ein. Das Passwort wird nicht gespeichert.", "vault.password": "Hauptpasswort", "vault.confirmPassword": "Passwort bestätigen", "vault.unlock": "Entsperren", "vault.forgot": "Passwort vergessen / Vault zurücksetzen", "vault.resetIrreversible": "Das Zurücksetzen kann nicht rückgängig gemacht werden", "vault.resetDescription": "Alle Serverprofile, gespeicherten Host-Fingerprints und weiteren verschlüsselten Daten werden gelöscht. Installierte Plugins und Update-Einstellungen bleiben erhalten.", "vault.resetInstruction": "Geben Sie zur Bestätigung SMAZAT ein", "vault.cancel": "Abbrechen", "vault.resetAction": "Daten löschen und Passwort zurücksetzen",
+      "app.newArchitecture": "NEUE ARCHITEKTUR", "app.initializing": "Initialisierung…", "app.lock": "Sperren", "app.coreRunning": "Core läuft",
+      "overview.cleanTitle": "Saubere Basis der neuen Anwendung", "overview.cleanDescription": "Getrennte Dienste, eingeschränktes IPC, Plugin-Runtime und sicherer Update-Kanal.", "overview.coreApi": "Core API", "overview.coreApiDescription": "Stabiler Anwendungsvertrag", "overview.dataSchema": "Datenschema", "overview.dataSchemaDescription": "Versionierter Benutzerspeicher", "overview.installedPlugins": "Installierte Plugins", "overview.noToolsNeeded": "Core funktioniert auch ohne Tools", "overview.currentSlice": "AKTUELLER UMFANG", "overview.sliceTitle": "Vault + Profile + SSH-Terminal", "overview.sliceDescription": "Funktionierende Verbindung mit obligatorischer Host-Key-Prüfung und getrenntem SessionManager.",
+      "terminal.eyebrow": "SSH SESSION MANAGER", "terminal.title": "Interaktives Terminal", "terminal.disconnected": "Getrennt", "terminal.connecting": "Verbindung…", "terminal.connected": "Verbunden", "terminal.connectionError": "Verbindungsfehler", "terminal.error": "Fehler", "terminal.server": "Server", "terminal.selectServer": "Server auswählen…", "terminal.password": "Passwort", "terminal.sshPassword": "SSH-Passwort", "terminal.passphrase": "Passphrase (optional)", "terminal.keyPassphrase": "Schlüssel-Passphrase", "terminal.connect": "Verbinden", "terminal.disconnect": "Trennen", "terminal.noProfile": "Erstellen Sie zuerst ein Serverprofil.", "terminal.aria": "SSH-Terminal", "terminal.libraryMissing": "Terminalbibliothek ist nicht verfügbar.", "terminal.welcome": "Wählen Sie einen Server und starten Sie die SSH-Verbindung.", "terminal.connectingTo": "Verbinde mit {target}…", "terminal.passwordAuth": "Passwortauthentifizierung", "terminal.vaultLocked": "Vault wurde gesperrt.",
+      "profiles.eyebrow": "VERSCHLÜSSELTE PROFILE", "profiles.title": "Serververwaltung", "profiles.new": "Neuer Server", "profiles.none": "Es ist noch kein Server gespeichert.", "profiles.name": "Name", "profiles.namePlaceholder": "Produktionsserver", "profiles.host": "Host / IP", "profiles.port": "Port", "profiles.user": "Benutzer", "profiles.auth": "Authentifizierung", "profiles.authPassword": "Passwort beim Verbinden", "profiles.authKey": "Privater Schlüssel", "profiles.privateKey": "Privater Schlüssel", "profiles.selectFile": "Datei auswählen…", "profiles.select": "Auswählen", "profiles.save": "Profil speichern", "profiles.delete": "Löschen", "profiles.key": "Schlüssel", "profiles.password": "Passwort", "profiles.saved": "Profil wurde gespeichert.", "profiles.deleteConfirm": "Dieses Serverprofil wirklich löschen?",
+      "updates.eyebrow": "UPDATE-REPOSITORY", "updates.title": "Core-Updates", "updates.installed": "Installierte Version", "updates.channel": "Kanal {channel}", "updates.ready": "Bereit zur Prüfung", "updates.integrityIntro": "Core prüft Plattform, Architektur, Größe und SHA-512.", "updates.check": "Prüfen", "updates.download": "Herunterladen und prüfen", "updates.reveal": "Datei anzeigen", "updates.alphaSecurity": "Alpha-Sicherheitsmodus", "updates.alphaDescription": "SHA-512 prüft die Integrität des Downloads. Die Installation startet nicht automatisch und die Quelle ist auf die erlaubte HTTPS-Domain begrenzt.", "updates.downloaded": "Release v{version} wurde heruntergeladen und geprüft", "updates.available": "Version {version} ist verfügbar", "updates.availableFallback": "Das Update kann heruntergeladen und geprüft werden.", "updates.current": "Sie verwenden die aktuelle Version", "updates.noNewer": "Im gewählten Kanal ist kein neueres Release verfügbar.", "updates.checking": "Prüfung…", "updates.checkingServer": "Update-Repository wird geprüft", "updates.tryingEndpoints": "Der erlaubte HTTPS-Endpunkt wird geprüft…", "updates.checkFailed": "Prüfung fehlgeschlagen", "updates.downloading": "Download…", "updates.downloadRejected": "Download wurde abgelehnt",
+      "plugins.eyebrow": "PLUGIN API 1.0.0", "plugins.title": "Installierte Tools", "plugins.install": "Aus Katalog installieren", "plugins.plugin": "Plugin", "plugins.version": "Version", "plugins.permissions": "Berechtigungen", "plugins.none": "Noch keine Plugins", "plugins.first": "Als Erstes folgt System Monitor.", "plugins.noPermissions": "keine Berechtigungen",
+      "settings.eyebrow": "LOKALE KONFIGURATION", "settings.title": "Core-Einstellungen", "settings.language": "Sprache", "settings.czech": "Čeština", "settings.german": "Deutsch", "settings.english": "English", "settings.updateChannel": "Update-Kanal", "settings.autoCheck": "Beim Start automatisch prüfen", "settings.allowedServers": "Erlaubte Update-Server", "settings.save": "Einstellungen speichern", "settings.saved": "Gespeichert",
+      "vault.damagedMode": "VERSCHLÜSSELTEN SPEICHER WIEDERHERSTELLEN", "vault.damagedTitle": "Vault ist unvollständig", "vault.damagedDescription": "Eine Vault-Datei fehlt. Die Daten werden nicht automatisch überschrieben.", "vault.setupMode": "ERSTEINRICHTUNG DES VAULTS", "vault.lockedMode": "VAULT IST GESPERRT", "vault.setupTitle": "Hauptpasswort erstellen", "vault.setupDescription": "Wählen Sie ein Hauptpasswort mit 4 bis 64 Zeichen. Ohne Passwort können verschlüsselte Daten nicht wiederhergestellt werden.", "vault.lockedDescription": "Der Vault existiert bereits. Geben Sie das Hauptpasswort ein, um auf gespeicherte Server zuzugreifen.", "vault.create": "Vault erstellen", "vault.passwordLength": "Das Hauptpasswort muss 4 bis 64 Zeichen lang sein.", "vault.passwordMismatch": "Die Passwörter stimmen nicht überein.", "vault.creating": "Wird erstellt…", "vault.unlocking": "Wird entsperrt…", "vault.typeDelete": "Geben Sie zur Bestätigung genau SMAZAT ein.", "vault.finalResetConfirm": "Letzte Bestätigung: Wirklich alle verschlüsselten Benutzerdaten löschen?", "vault.deleting": "Löschen…", "vault.resetDone": "Vault wurde zurückgesetzt. Erstellen Sie ein neues Hauptpasswort.",
+      "ssh.unknownHost": "Server {host}:{port} ist noch nicht vertrauenswürdig.\n\nSHA-256-Fingerprint:\n{fingerprint}\n\nPrüfen Sie den Fingerprint über einen anderen Kanal. Speichern und fortfahren?", "ssh.trustFailed": "Host-Key konnte nicht gespeichert werden.", "ssh.keyChanged": "WARNUNG: Der SSH-Host-Key hat sich geändert. Die Verbindung wurde blockiert.", "ssh.knownKey": "Bekannt", "ssh.newKey": "Neu", "ssh.failed": "Verbindung fehlgeschlagen.",
+      "errors.unknown": "Unbekannter Fehler", "errors.initialization": "Initialisierungsfehler"
+    },
+    en: {
+      "nav.overview": "Overview", "nav.terminal": "Terminal", "nav.servers": "Servers", "nav.updates": "Updates", "nav.plugins": "Plugins", "nav.settings": "Settings", "nav.aria": "Main navigation",
+      "vault.storage": "ENCRYPTED LOCAL STORAGE", "vault.unlockTitle": "Unlock Server Manager", "vault.unlockIntro": "Enter the master password. The password is not stored.", "vault.password": "Master password", "vault.confirmPassword": "Confirm password", "vault.unlock": "Unlock", "vault.forgot": "Forgot password / reset vault", "vault.resetIrreversible": "Reset cannot be undone", "vault.resetDescription": "All server profiles, saved host fingerprints, and other encrypted data will be deleted. Installed plugins and update settings will remain.", "vault.resetInstruction": "Type SMAZAT to confirm", "vault.cancel": "Cancel", "vault.resetAction": "Delete data and reset password",
+      "app.newArchitecture": "NEW ARCHITECTURE", "app.initializing": "Initializing…", "app.lock": "Lock", "app.coreRunning": "Core is running",
+      "overview.cleanTitle": "A clean foundation for the new application", "overview.cleanDescription": "Separated services, restricted IPC, plugin runtime, and a secure update channel.", "overview.coreApi": "Core API", "overview.coreApiDescription": "Stable application contract", "overview.dataSchema": "Data schema", "overview.dataSchemaDescription": "Versioned user storage", "overview.installedPlugins": "Installed plugins", "overview.noToolsNeeded": "Core works without Tools", "overview.currentSlice": "CURRENT SLICE", "overview.sliceTitle": "Vault + profiles + SSH terminal", "overview.sliceDescription": "Working connection with mandatory host-key verification and a separate SessionManager.",
+      "terminal.eyebrow": "SSH SESSION MANAGER", "terminal.title": "Interactive terminal", "terminal.disconnected": "Disconnected", "terminal.connecting": "Connecting…", "terminal.connected": "Connected", "terminal.connectionError": "Connection error", "terminal.error": "Error", "terminal.server": "Server", "terminal.selectServer": "Select a server…", "terminal.password": "Password", "terminal.sshPassword": "SSH password", "terminal.passphrase": "Passphrase (optional)", "terminal.keyPassphrase": "Key passphrase", "terminal.connect": "Connect", "terminal.disconnect": "Disconnect", "terminal.noProfile": "Create a server profile first.", "terminal.aria": "SSH terminal", "terminal.libraryMissing": "Terminal library is unavailable.", "terminal.welcome": "Select a server and start the SSH connection.", "terminal.connectingTo": "Connecting to {target}…", "terminal.passwordAuth": "password authentication", "terminal.vaultLocked": "Vault was locked.",
+      "profiles.eyebrow": "ENCRYPTED PROFILES", "profiles.title": "Server management", "profiles.new": "New server", "profiles.none": "No server has been saved yet.", "profiles.name": "Name", "profiles.namePlaceholder": "Production server", "profiles.host": "Host / IP", "profiles.port": "Port", "profiles.user": "User", "profiles.auth": "Authentication", "profiles.authPassword": "Password when connecting", "profiles.authKey": "Private key", "profiles.privateKey": "Private key", "profiles.selectFile": "Select a file…", "profiles.select": "Select", "profiles.save": "Save profile", "profiles.delete": "Delete", "profiles.key": "key", "profiles.password": "password", "profiles.saved": "Profile was saved.", "profiles.deleteConfirm": "Delete this server profile?",
+      "updates.eyebrow": "UPDATE REPOSITORY", "updates.title": "Core updates", "updates.installed": "Installed version", "updates.channel": "channel {channel}", "updates.ready": "Ready to check", "updates.integrityIntro": "Core verifies platform, architecture, size, and SHA-512.", "updates.check": "Check", "updates.download": "Download and verify", "updates.reveal": "Show file", "updates.alphaSecurity": "Alpha security mode", "updates.alphaDescription": "SHA-512 checks download integrity. Installation does not start automatically, and the source is restricted to the allowed HTTPS domain.", "updates.downloaded": "Release v{version} was downloaded and verified", "updates.available": "Version {version} is available", "updates.availableFallback": "The update is ready to download and verify.", "updates.current": "You are using the current version", "updates.noNewer": "No newer release is available on the selected channel.", "updates.checking": "Checking…", "updates.checkingServer": "Checking update repository", "updates.tryingEndpoints": "Trying the allowed HTTPS endpoint…", "updates.checkFailed": "Update check failed", "updates.downloading": "Downloading…", "updates.downloadRejected": "Download was rejected",
+      "plugins.eyebrow": "PLUGIN API 1.0.0", "plugins.title": "Installed Tools", "plugins.install": "Install from catalog", "plugins.plugin": "Plugin", "plugins.version": "Version", "plugins.permissions": "Permissions", "plugins.none": "No plugins yet", "plugins.first": "System Monitor will be first.", "plugins.noPermissions": "no permissions",
+      "settings.eyebrow": "LOCAL CONFIGURATION", "settings.title": "Core settings", "settings.language": "Language", "settings.czech": "Čeština", "settings.german": "Deutsch", "settings.english": "English", "settings.updateChannel": "Update channel", "settings.autoCheck": "Check automatically at startup", "settings.allowedServers": "Allowed update servers", "settings.save": "Save settings", "settings.saved": "Saved",
+      "vault.damagedMode": "RECOVER ENCRYPTED STORAGE", "vault.damagedTitle": "Vault is incomplete", "vault.damagedDescription": "One of the vault files is missing. Data will not be overwritten automatically.", "vault.setupMode": "INITIAL VAULT SETUP", "vault.lockedMode": "VAULT IS LOCKED", "vault.setupTitle": "Create master password", "vault.setupDescription": "Choose a master password between 4 and 64 characters. Encrypted data cannot be recovered without it.", "vault.lockedDescription": "The vault already exists. Enter its master password to access saved servers.", "vault.create": "Create vault", "vault.passwordLength": "The master password must contain 4 to 64 characters.", "vault.passwordMismatch": "Passwords do not match.", "vault.creating": "Creating…", "vault.unlocking": "Unlocking…", "vault.typeDelete": "Type SMAZAT exactly to confirm.", "vault.finalResetConfirm": "Final confirmation: delete all encrypted user data?", "vault.deleting": "Deleting…", "vault.resetDone": "Vault was reset. Create a new master password.",
+      "ssh.unknownHost": "Server {host}:{port} is not trusted yet.\n\nSHA-256 fingerprint:\n{fingerprint}\n\nVerify the fingerprint through another channel. Save it and continue?", "ssh.trustFailed": "The host key could not be saved.", "ssh.keyChanged": "WARNING: The SSH host key changed. The connection was blocked.", "ssh.knownKey": "Known", "ssh.newKey": "New", "ssh.failed": "Connection failed.",
+      "errors.unknown": "Unknown error", "errors.initialization": "Initialization error"
+    }
+  };
+
+  Object.assign(catalogs.cs, {
+    "profiles.storePassword": "Uložit heslo do šifrovaného vaultu",
+    "profiles.storedPassword": "SSH heslo",
+    "profiles.storePasswordPlaceholder": "Zadejte heslo k uložení",
+    "profiles.passwordStoredPlaceholder": "Heslo je uložené – prázdné pole jej nezmění",
+    "profiles.passwordSecurity": "Heslo se ukládá pouze uvnitř šifrovaného vaultu.",
+    "terminal.savedPasswordHint": "Volitelné – použije se heslo z vaultu",
+    "ssh.changedHostConfirm": "VAROVÁNÍ: SSH host klíč serveru {host}:{port} se změnil. Může jít o přeinstalaci serveru, ale také o útok.\n\nZnámý otisk:\n{knownFingerprint}\n\nNový otisk:\n{fingerprint}\n\nOvěřte nový otisk jiným důvěryhodným kanálem. Chcete známý otisk nahradit a znovu se připojit?",
+    "channels.all": "Vše",
+    "updates.channelFilter": "Kanál",
+    "updates.install": "Spustit instalátor",
+    "updates.catalogEyebrow": "KATALOG VYDÁNÍ",
+    "updates.catalogTitle": "Dostupná vydání",
+    "updates.catalogBeforeCheck": "Po kontrole se zde zobrazí všechna kompatibilní vydání.",
+    "updates.catalogEmpty": "V tomto kanálu nejsou žádná kompatibilní vydání.",
+    "updates.selectedLabel": "Vybráno",
+    "updates.selectLabel": "Vybrat",
+    "updates.newerVersion": "Je dostupná novější verze v{version}",
+    "updates.sameVersionNewerRelease": "Je dostupné novější vydání stejné verze v{version}",
+    "updates.sameVersionCurrentRelease": "Používáte aktuální vydání v{version}",
+    "updates.sameVersionOlderRelease": "Je vybráno starší vydání stejné verze v{version}",
+    "updates.olderVersion": "Vybrána starší verze v{version}",
+    "updates.selected": "Vybráno vydání v{version}",
+    "updates.publishedAt": "Vydáno {date}",
+    "updates.noneAvailable": "Žádné dostupné vydání",
+    "updates.noCompatible": "Repozitář neobsahuje kompatibilní vydání pro tuto platformu, architekturu a kanál.",
+    "updates.installConfirm": "Spustit ověřený instalátor vydání v{version} zveřejněného {date}?",
+    "updates.installFailed": "Instalátor se nepodařilo spustit",
+    "plugins.checkCatalog": "Načíst webový katalog",
+    "plugins.checking": "Načítám katalog…",
+    "plugins.webCatalog": "WEBOVÝ KATALOG",
+    "plugins.available": "Dostupné pluginy",
+    "plugins.catalogBeforeCheck": "Nejprve načtěte katalog z povoleného update serveru.",
+    "plugins.catalogEmpty": "Ve zvoleném kanálu nejsou dostupné žádné kompatibilní pluginy.",
+    "plugins.open": "Otevřít",
+    "plugins.channelFilter": "Kanál katalogu",
+    "plugins.remove": "Odstranit",
+    "plugins.removeConfirm": "Opravdu odstranit plugin {name}? Nastavení Core a vault zůstanou zachované.",
+    "plugins.installed": "Nainstalováno",
+    "plugins.update": "Aktualizovat",
+    "plugins.installing": "Instaluji…",
+    "plugins.installConfirm": "Nainstalovat {name} v{version}?\n\nPožadovaná oprávnění: {permissions}",
+    "plugins.minimized": "Minimalizované pluginy",
+    "plugins.restore": "Obnovit plugin {name}",
+    "plugins.restoreAction": "Kliknutím obnovit",
+    "settings.pluginChannel": "Kanál pluginů",
+    "legal.eyebrow": "PRÁVNÍ INFORMACE", "legal.title": "Licence a oznámení", "legal.description": "CH-J Server Manager je poskytován pod Apache License 2.0. Licence komponent třetích stran zůstávají zachované.", "legal.application": "Licence aplikace", "legal.notice": "Autorské oznámení", "legal.thirdParty": "Licence třetích stran", "legal.thirdPartyBundle": "Kompletní licenční balík", "legal.electron": "Licence Electronu", "legal.chromium": "Licence Chromia"
+  });
+  Object.assign(catalogs.de, {
+    "profiles.storePassword": "Passwort im verschlüsselten Vault speichern",
+    "profiles.storedPassword": "SSH-Passwort",
+    "profiles.storePasswordPlaceholder": "Zu speicherndes Passwort eingeben",
+    "profiles.passwordStoredPlaceholder": "Passwort gespeichert – leer lassen, um es beizubehalten",
+    "profiles.passwordSecurity": "Das Passwort wird ausschließlich im verschlüsselten Vault gespeichert.",
+    "terminal.savedPasswordHint": "Optional – das Passwort aus dem Vault wird verwendet",
+    "ssh.changedHostConfirm": "WARNUNG: Der SSH-Host-Key von {host}:{port} hat sich geändert. Dies kann durch eine Neuinstallation verursacht werden, aber auch auf einen Angriff hinweisen.\n\nBekannter Fingerprint:\n{knownFingerprint}\n\nNeuer Fingerprint:\n{fingerprint}\n\nPrüfen Sie den neuen Fingerprint über einen anderen vertrauenswürdigen Kanal. Bekannten Fingerprint ersetzen und erneut verbinden?",
+    "channels.all": "Alle",
+    "updates.channelFilter": "Kanal",
+    "updates.install": "Installer starten",
+    "updates.catalogEyebrow": "RELEASE-KATALOG",
+    "updates.catalogTitle": "Verfügbare Releases",
+    "updates.catalogBeforeCheck": "Nach der Prüfung werden hier alle kompatiblen Releases angezeigt.",
+    "updates.catalogEmpty": "In diesem Kanal sind keine kompatiblen Releases verfügbar.",
+    "updates.selectedLabel": "Ausgewählt",
+    "updates.selectLabel": "Auswählen",
+    "updates.newerVersion": "Eine neuere Version v{version} ist verfügbar",
+    "updates.sameVersionNewerRelease": "Ein neueres Release derselben Version v{version} ist verfügbar",
+    "updates.sameVersionCurrentRelease": "Sie verwenden das aktuelle Release v{version}",
+    "updates.sameVersionOlderRelease": "Ein älteres Release derselben Version v{version} ist ausgewählt",
+    "updates.olderVersion": "Ältere Version v{version} ausgewählt",
+    "updates.selected": "Release v{version} ausgewählt",
+    "updates.publishedAt": "Veröffentlicht am {date}",
+    "updates.noneAvailable": "Kein Release verfügbar",
+    "updates.noCompatible": "Das Repository enthält keinen kompatiblen Release für diese Plattform, Architektur und diesen Kanal.",
+    "updates.installConfirm": "Geprüften Installer der Version v{version}, veröffentlicht am {date}, starten?",
+    "updates.installFailed": "Der Installer konnte nicht gestartet werden",
+    "plugins.checkCatalog": "Webkatalog laden",
+    "plugins.checking": "Katalog wird geladen…",
+    "plugins.webCatalog": "WEBKATALOG",
+    "plugins.available": "Verfügbare Plugins",
+    "plugins.catalogBeforeCheck": "Laden Sie zuerst den Katalog vom erlaubten Update-Server.",
+    "plugins.catalogEmpty": "Im gewählten Kanal sind keine kompatiblen Plugins verfügbar.",
+    "plugins.open": "Öffnen",
+    "plugins.channelFilter": "Katalogkanal",
+    "plugins.remove": "Entfernen",
+    "plugins.removeConfirm": "Plugin {name} wirklich entfernen? Core-Einstellungen und Vault bleiben erhalten.",
+    "plugins.installed": "Installiert",
+    "plugins.update": "Aktualisieren",
+    "plugins.installing": "Installation…",
+    "plugins.installConfirm": "{name} v{version} installieren?\n\nErforderliche Berechtigungen: {permissions}",
+    "plugins.minimized": "Minimierte Plugins",
+    "plugins.restore": "Plugin {name} wiederherstellen",
+    "plugins.restoreAction": "Zum Wiederherstellen klicken",
+    "settings.pluginChannel": "Plugin-Kanal",
+    "legal.eyebrow": "RECHTLICHE INFORMATIONEN", "legal.title": "Lizenzen und Hinweise", "legal.description": "CH-J Server Manager wird unter der Apache License 2.0 bereitgestellt. Die Lizenzen der Drittanbieterkomponenten bleiben bestehen.", "legal.application": "Anwendungslizenz", "legal.notice": "Urheberrechtshinweis", "legal.thirdParty": "Drittanbieterlizenzen", "legal.thirdPartyBundle": "Vollständiges Lizenzpaket", "legal.electron": "Electron-Lizenz", "legal.chromium": "Chromium-Lizenzen"
+  });
+  Object.assign(catalogs.en, {
+    "profiles.storePassword": "Store password in the encrypted vault",
+    "profiles.storedPassword": "SSH password",
+    "profiles.storePasswordPlaceholder": "Enter the password to store",
+    "profiles.passwordStoredPlaceholder": "Password stored – leave empty to keep it",
+    "profiles.passwordSecurity": "The password is stored only inside the encrypted vault.",
+    "terminal.savedPasswordHint": "Optional – the password from the vault will be used",
+    "ssh.changedHostConfirm": "WARNING: The SSH host key for {host}:{port} changed. This may be caused by a server reinstall, but it can also indicate an attack.\n\nKnown fingerprint:\n{knownFingerprint}\n\nNew fingerprint:\n{fingerprint}\n\nVerify the new fingerprint through another trusted channel. Replace the known fingerprint and reconnect?",
+    "channels.all": "All",
+    "updates.channelFilter": "Channel",
+    "updates.install": "Launch installer",
+    "updates.catalogEyebrow": "RELEASE CATALOG",
+    "updates.catalogTitle": "Available releases",
+    "updates.catalogBeforeCheck": "All compatible releases will appear here after checking.",
+    "updates.catalogEmpty": "No compatible releases are available in this channel.",
+    "updates.selectedLabel": "Selected",
+    "updates.selectLabel": "Select",
+    "updates.newerVersion": "A newer version v{version} is available",
+    "updates.sameVersionNewerRelease": "A newer release of the same version v{version} is available",
+    "updates.sameVersionCurrentRelease": "You are using the current release v{version}",
+    "updates.sameVersionOlderRelease": "An older release of the same version v{version} is selected",
+    "updates.olderVersion": "Older version v{version} selected",
+    "updates.selected": "Release v{version} selected",
+    "updates.publishedAt": "Published {date}",
+    "updates.noneAvailable": "No release available",
+    "updates.noCompatible": "The repository has no compatible release for this platform, architecture, and channel.",
+    "updates.installConfirm": "Launch the verified installer for v{version}, published {date}?",
+    "updates.installFailed": "The installer could not be launched",
+    "plugins.checkCatalog": "Load web catalog",
+    "plugins.checking": "Loading catalog…",
+    "plugins.webCatalog": "WEB CATALOG",
+    "plugins.available": "Available plugins",
+    "plugins.catalogBeforeCheck": "Load the catalog from an allowed update server first.",
+    "plugins.catalogEmpty": "No compatible plugins are available in the selected channel.",
+    "plugins.open": "Open",
+    "plugins.channelFilter": "Catalog channel",
+    "plugins.remove": "Remove",
+    "plugins.removeConfirm": "Remove the {name} plugin? Core settings and the vault will remain intact.",
+    "plugins.installed": "Installed",
+    "plugins.update": "Update",
+    "plugins.installing": "Installing…",
+    "plugins.installConfirm": "Install {name} v{version}?\n\nRequired permissions: {permissions}",
+    "plugins.minimized": "Minimized plugins",
+    "plugins.restore": "Restore the {name} plugin",
+    "plugins.restoreAction": "Click to restore",
+    "settings.pluginChannel": "Plugin channel",
+    "legal.eyebrow": "LEGAL INFORMATION", "legal.title": "Licenses and notices", "legal.description": "CH-J Server Manager is provided under the Apache License 2.0. Third-party component licenses remain in effect.", "legal.application": "Application license", "legal.notice": "Copyright notice", "legal.thirdParty": "Third-party licenses", "legal.thirdPartyBundle": "Complete license package", "legal.electron": "Electron license", "legal.chromium": "Chromium licenses"
+  });
+
+  const localeByLanguage = Object.freeze({ cs: "cs-CZ", de: "de-DE", en: "en-US" });
+  const supportedLanguages = Object.freeze(Object.keys(catalogs));
+
+  function normalizeLanguage(value) {
+    const language = String(value || "").toLowerCase().split("-")[0];
+    return supportedLanguages.includes(language) ? language : "cs";
+  }
+
+  function interpolate(template, values = {}) {
+    return String(template).replace(/\{([A-Za-z0-9_]+)\}/g, (match, key) => (
+      Object.prototype.hasOwnProperty.call(values, key) ? String(values[key]) : match
+    ));
+  }
+
+  function createI18n(initialLanguage = "cs") {
+    let language = normalizeLanguage(initialLanguage);
+    return Object.freeze({
+      apply(rootNode = document) {
+        rootNode.querySelectorAll("[data-i18n]").forEach((element) => { element.textContent = this.t(element.dataset.i18n); });
+        rootNode.querySelectorAll("[data-i18n-placeholder]").forEach((element) => { element.placeholder = this.t(element.dataset.i18nPlaceholder); });
+        rootNode.querySelectorAll("[data-i18n-aria-label]").forEach((element) => { element.setAttribute("aria-label", this.t(element.dataset.i18nAriaLabel)); });
+      },
+      formatNumber(value, options) { return Number(value).toLocaleString(localeByLanguage[language], options); },
+      getLanguage() { return language; },
+      getLocale() { return localeByLanguage[language]; },
+      setLanguage(value) { language = normalizeLanguage(value); return language; },
+      t(key, values) {
+        const template = catalogs[language][key] ?? catalogs.cs[key] ?? key;
+        return interpolate(template, values);
+      }
+    });
+  }
+
+  return Object.freeze({ catalogs, createI18n, interpolate, normalizeLanguage, supportedLanguages });
+});
