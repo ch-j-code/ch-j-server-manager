@@ -11,7 +11,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --enable-logging",
-    "test": "node --test",
+    "test": "node scripts/runCoreTests.js",
     "licenses:generate": "node scripts/generateThirdPartyNotices.js",
     "prepare:release": "npm run licenses:generate && npm run stamp:build",
     "stamp:build": "node scripts/stampBuild.js",

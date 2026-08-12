@@ -67,9 +67,7 @@ fs.writeFileSync(outputPath, `${header}\n${sections.join("\n\n")}\n`, "utf8");
 const bundleDocuments = [
   { name: "THIRD_PARTY_NOTICES.txt", path: outputPath, description: "Production Node.js dependency licenses" },
   { name: "ELECTRON_LICENSE.txt", path: path.join(projectRoot, "node_modules", "electron", "dist", "LICENSE"), description: "Electron license" },
-  { name: "CHROMIUM_LICENSES.html", path: path.join(projectRoot, "node_modules", "electron", "dist", "LICENSES.chromium.html"), description: "Chromium and embedded component licenses" },
-  { name: "MONACO_LICENSE.txt", path: path.join(projectRoot, "..", "plugins", "file-manager", "ui", "vendor", "monaco", "LICENSE.txt"), description: "Monaco Editor license" },
-  { name: "MONACO_THIRD_PARTY_NOTICES.txt", path: path.join(projectRoot, "..", "plugins", "file-manager", "ui", "vendor", "monaco", "ThirdPartyNotices.txt"), description: "Monaco Editor third-party notices" }
+  { name: "CHROMIUM_LICENSES.html", path: path.join(projectRoot, "node_modules", "electron", "dist", "LICENSES.chromium.html"), description: "Chromium and embedded component licenses" }
 ];
 for (const document of bundleDocuments) {
   if (!fs.statSync(document.path, { throwIfNoEntry: false })?.isFile()) throw new Error(`Missing third-party license document: ${document.path}`);
@@ -80,7 +78,7 @@ const bundleReadme = [
   "CH-J Server Manager — Complete Third-Party License Package",
   "",
   "This archive contains the license texts and notices for third-party software",
-  "distributed by CH-J Server Manager Core and the bundled File Manager source.",
+  "distributed by CH-J Server Manager Core.",
   "The project itself is licensed separately under Apache License 2.0.",
   "",
   "Contents:",
