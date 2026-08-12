@@ -10,7 +10,7 @@ Get the latest release for your platform:
 - **Windows**: [Download](https://www.sm.ch-j.de/download.php?channel=alpha&platform=win&arch=x64)
 - **Ubuntu**: [Download](https://www.sm.ch-j.de/download.php?channel=alpha&platform=ubuntu&arch=x64)
 
-For more versions and channels, visit [sm.ch-j.de](https://www.sm.ch-j.de/de/)
+For more versions and channels, visit [sm.ch-j.de](https://www.sm.ch-j.de/de/servermanager/)
 
 ## Current implementation scope
 
