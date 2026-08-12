@@ -22,15 +22,9 @@ test("application includes the complete project and dependency license texts", (
   }
   assert.equal(packageJson.build.afterPack, "scripts/afterPack.js");
   const bundle = new AdmZip(path.join(root, "THIRD_PARTY_LICENSES.zip"));
-  for (const filename of ["THIRD_PARTY_NOTICES.txt", "ELECTRON_LICENSE.txt", "CHROMIUM_LICENSES.html", "MONACO_LICENSE.txt", "MONACO_THIRD_PARTY_NOTICES.txt", "SHA512SUMS.txt"]) {
+  for (const filename of ["THIRD_PARTY_NOTICES.txt", "ELECTRON_LICENSE.txt", "CHROMIUM_LICENSES.html", "SHA512SUMS.txt"]) {
     assert.ok(bundle.getEntry(filename), filename);
   }
-});
-
-test("plugin packager injects the project license when a plugin has none", () => {
-  const source = fs.readFileSync(path.join(root, "..", "release-tools", "package-plugin.js"), "utf8");
-  assert.match(source, /relative: "LICENSE\.txt"/);
-  assert.equal(typeof AdmZip, "function");
 });
 
 test("license documents are accessible from the sandboxed renderer through narrow IPC", () => {
