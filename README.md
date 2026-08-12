@@ -1,32 +1,32 @@
 # CH-J Server Manager Core
 
-Nová implementace CH-J Server Manager. Uživatelský název aplikace zůstává beze změny; „Core“ označuje pouze novou architekturu.
+A new implementation of CH-J Server Manager. The user-facing application name remains unchanged; “Core” refers only to the new architecture.
 
-## Aktuální implementační řez
+## Current implementation scope
 
-- bezpečný Electron bootstrap;
-- jediný omezený preload bridge;
-- atomická necitlivá konfigurace;
-- plugin manifest a registr nainstalovaných pluginů;
-- `HashUrlProvider` pro PHP kanály `alpha`, `beta` a `stable`, včetně složeného pohledu `all`;
-- kontrola platformy, architektury, verze, velikosti a SHA-512;
-- stažení do interního stagingu bez automatického spuštění;
-- šifrovaný vault (scrypt + AES-256-GCM) s ručním zamknutím;
-- vytváření a úpravy serverových profilů;
-- volitelné SSH heslo uložené odděleně v šifrované části vaultu a automaticky použité při prázdném přihlašovacím poli;
-- více-relacový SSH `SessionManager` s password/private-key autentizací;
-- předběžné DNS rozlišení SSH hostname, přesná chyba při chybějícím záznamu a preference IPv4 při současném A/AAAA záznamu;
-- povinná kontrola SHA-256 SSH host key, potvrzení prvního klíče a explicitní potvrzení ověřené náhrady změněného klíče;
-- interaktivní terminál s inputem a změnou velikosti;
-- omezený SFTP transport v Core s absolutními cestami, editorem do 25 MiB, multi-upload/download přenosy do 16 GiB a exportem ZIP/TAR/TAR.GZ;
-- i18n runtime s kompletními katalogy pro češtinu, němčinu a angličtinu;
-- webový katalog, SHA-512 instalace, sandboxované spouštění a odinstalování `.chjplugin` balíčků;
-- pluginy System Monitor (včetně CPU/RAM/swap/disk/síťových metrik), Key Generator, Log Viewer, Users, File Manager a NGINX Manager jako samostatné instalovatelné balíčky;
-- shell UI a automatické testy.
+- secure Electron bootstrap;
+- a single restricted preload bridge;
+- atomic non-sensitive configuration;
+- plugin manifests and an installed-plugin registry;
+- `HashUrlProvider` for the PHP channels `alpha`, `beta`, and `stable`, including the combined `all` view;
+- platform, architecture, version, size, and SHA-512 validation;
+- downloads to internal staging without automatic execution;
+- encrypted vault (scrypt + AES-256-GCM) with manual locking;
+- server profile creation and editing;
+- an optional SSH password stored separately in the encrypted vault and used automatically when the login field is empty;
+- multi-session SSH `SessionManager` with password/private-key authentication;
+- preliminary DNS resolution of SSH hostnames, a precise error for missing records, and IPv4 preference when both A and AAAA records exist;
+- mandatory SHA-256 SSH host-key verification, first-key confirmation, and explicit confirmation of a verified replacement when a key changes;
+- interactive terminal with input and resizing;
+- restricted SFTP transport in Core with absolute paths, an editor for files up to 25 MiB, multi-file upload/download transfers up to 16 GiB, and ZIP/TAR/TAR.GZ export;
+- i18n runtime with complete Czech, German, and English catalogs;
+- web catalog, SHA-512-verified installation, sandboxed execution, and removal of `.chjplugin` packages;
+- System Monitor (including CPU/RAM/swap/disk/network metrics), Key Generator, Log Viewer, Users, File Manager, and NGINX Manager plugins as separate installable packages;
+- shell UI and automated tests.
 
-Zatím chybí migrace dat starších verzí, SFTP přenosová fronta/resume/sudo save a vzdálené rozbalování archivů, jump host/forwarding, Safe Mode a další plánované Tools. Ověřený instalátor Core lze předat platformě ručně; plně bezobslužná instalace zatím není povolená. SSH heslo lze volitelně uložit ve vaultu; passphrase soukromého klíče se neukládá a zadává se pro konkrétní připojení. Platformní a release stav je vedený v `../PROJECT-STATUS.md`.
+Migration of data from older versions, SFTP transfer queue/resume/sudo save, remote archive extraction, jump hosts/forwarding, Safe Mode, and other planned Tools are not yet implemented. A verified Core installer can be handed off to the platform manually; fully unattended installation is not enabled yet. An SSH password can optionally be stored in the vault; private-key passphrases are not stored and must be entered for each connection. Platform and release status is documented in `../PROJECT-STATUS.md`.
 
-## Vývoj
+## Development
 
 ```bash
 npm install
@@ -34,28 +34,28 @@ npm test
 npm start
 ```
 
-Při prvním startu aplikace vyžádá vytvoření hlavního hesla vaultu o délce 4 až 64 znaků. Potom vytvořte profil v části **Servery** a připojte se v části **Terminál**. Otisk prvního host klíče vždy ověřte také jiným důvěryhodným kanálem.
+On first launch, the application asks you to create a vault master password between 4 and 64 characters long. Then create a profile under **Servers** and connect under **Terminal**. Always verify the first host-key fingerprint through another trusted channel as well.
 
-Pokud se známý SSH host klíč změní, Core připojení nejprve zablokuje a zobrazí původní i nový SHA-256 fingerprint. Nový fingerprint lze uložit pouze samostatným varovným potvrzením obou hodnot; potvrzení použijte až po jejich ověření jiným důvěryhodným kanálem.
+If a known SSH host key changes, Core blocks the connection first and displays both the original and new SHA-256 fingerprints. The new fingerprint can be saved only through a separate warning that requires confirmation of both values; confirm it only after verifying them through another trusted channel.
 
-Na zamykací obrazovce lze použít **Zapomenuté heslo / obnovit vault**. Protože bez původního hesla nelze data dešifrovat, obnova odstraní serverové profily, důvěryhodné host fingerprinty a ostatní šifrovaná data. Nastavení aktualizací a instalované pluginy nemaže.
+The lock screen provides **Forgot password / reset vault**. Because the data cannot be decrypted without the original password, resetting removes server profiles, trusted host fingerprints, and other encrypted data. Update settings and installed plugins are preserved.
 
-Jazyk lze změnit přímo na zamykací obrazovce nebo v části **Nastavení**. Volba `cs`, `de` nebo `en` se ukládá do necitlivé lokální konfigurace a použije se při dalším startu.
+The language can be changed directly on the lock screen or under **Settings**. The `cs`, `de`, or `en` selection is stored in non-sensitive local configuration and applied on the next launch.
 
-Alpha updater používá pouze HTTPS endpoint `https://sm.ch-j.de/` definovaný v main procesu. Veřejný server již má platný Let’s Encrypt certifikát, Core však v dočasném testovacím režimu stále přijímá libovolný certifikát tohoto jediného pevně povoleného hostitele. HTTPS a allowlist zůstávají povinné, ale standardní ověření CA je nutné co nejdříve znovu zapnout. SHA-512 ověřuje přesný obsah artefaktu, nikoli identitu vydavatele.
+The alpha updater uses only the HTTPS endpoint `https://sm.ch-j.de/`, defined in the main process. The public server already has a valid Let’s Encrypt certificate, but in temporary test mode Core still accepts any certificate from this single explicitly allowed host. HTTPS and the allowlist remain mandatory, but standard CA verification must be re-enabled as soon as possible. SHA-512 verifies the exact artifact contents, not the publisher’s identity.
 
-Kanály mají v aplikaci i PHP serveru shodné názvy `alpha`, `beta`, `stable`; historické `dev` není alias a je odmítnuto. Aktualizace Core a katalog pluginů mají samostatně uloženou volbu kanálu. Volba `all`/„Vše“ je pouze klientský pohled, který bezpečně načte a sloučí všechny tři skutečné kanály. macOS distribuce a aktualizace se vytvářejí pouze pro Apple Silicon (`arm64`), nikoli pro Intel (`x64`).
+The channels use the same names in the application and on the PHP server: `alpha`, `beta`, and `stable`. The historical `dev` channel is not an alias and is rejected. Core updates and the plugin catalog store their channel selections separately. The `all` option is only a client-side view that safely loads and merges all three real channels. macOS distributions and updates are built only for Apple Silicon (`arm64`), not Intel (`x64`).
 
-`npm run dist:mac` vytváří dva oddělené artefakty: DMG pro automatickou aktualizaci a `*.app.zip` pro první instalaci z webu. ZIP zachovává strukturu macOS bundle a build krok ověřuje `codesign` před i po zabalení. Bez certifikátu Developer ID Application vznikne jen ad-hoc podepsaný testovací build, který může být nutné ručně povolit v nastavení Soukromí a zabezpečení. Pro bezobslužnou webovou instalaci musí být `.app` podepsaná Developer ID, používat hardened runtime a být notarizována Applem.
+`npm run dist:mac` creates two separate artifacts: a DMG for automatic updates and `*.app.zip` for initial installation from the website. The ZIP preserves the macOS bundle structure, and the build step verifies `codesign` both before and after packaging. Without a Developer ID Application certificate, only an ad hoc signed test build is produced, which may need to be allowed manually in Privacy & Security settings. For unattended web installation, the `.app` must be signed with Developer ID, use the hardened runtime, and be notarized by Apple.
 
-Obrazovka aktualizací načítá celý kompatibilní katalog pro aktuální platformu, architekturu a kanál. Každý release rozlišuje pomocí serverového `id` a `published_at`, takže lze ručně vybrat, stáhnout, ověřit a spustit také jiný build se stejným číslem verze. Spuštění instalátoru je vždy ruční a dostupné až po úspěšné kontrole SHA-512.
+The Updates screen loads the complete compatible catalog for the current platform, architecture, and channel. Each release is distinguished by the server-provided `id` and `published_at`, so another build with the same version number can also be selected, downloaded, verified, and launched manually. Launching the installer is always manual and becomes available only after successful SHA-512 verification.
 
-Správce pluginů načítá katalog pouze z povoleného originu `https://sm.ch-j.de/`; HTTP, přímé IP adresy a staré QNAP adresy Core nepovoluje. V alfa režimu je ověření CA dočasně vypnuté jen pro tento origin. Nesouhlas velikosti nebo SHA-512 je bezpečnostní chyba a balíček se nepoužije. Samostatné balíčky `.chjplugin` bezpečně rozbaluje do stagingu a atomicky instaluje do uživatelského adresáře. Nainstalovaný plugin lze odstranit; před smazáním všech jeho nainstalovaných verzí Core zavře jeho okno. Vault ani konfigurace Core se tím nemažou. Pluginová okna mají vlastní sandbox, pevný preload a capability odvozené z ověřeného manifestu. Aktuální Plugin API je `1.1.0`; katalog dostává tuto verzi v parametru `plugin_api` a nekompatibilní vydání odfiltruje. V alfa katalogu jsou publikované pluginy `chj.system-monitor`, `chj.key-generator`, `chj.log-viewer`, `chj.users`, `chj.file-manager` a `chj.nginx-manager`.
+The Plugin Manager loads the catalog only from the allowed origin `https://sm.ch-j.de/`; Core does not permit HTTP, direct IP addresses, or legacy QNAP addresses. In alpha mode, CA verification is temporarily disabled only for this origin. A size or SHA-512 mismatch is treated as a security error and the package is not used. Standalone `.chjplugin` packages are safely extracted to staging and atomically installed in the user directory. An installed plugin can be removed; Core closes its window before deleting all installed versions. This does not delete the vault or Core configuration. Plugin windows have their own sandbox, fixed preload, and capabilities derived from the verified manifest. The current Plugin API is `1.1.0`; the catalog receives this version in the `plugin_api` parameter and filters out incompatible releases. The alpha catalog publishes `chj.system-monitor`, `chj.key-generator`, `chj.log-viewer`, `chj.users`, `chj.file-manager`, and `chj.nginx-manager`.
 
-NGINX Manager používá jen `session.read`, `nginx.read` a `nginx.manage`. Umí inventář a omezené čtení konfigurace, `nginx -T`, editaci souborů do 512 KiB s časovanou zálohou, `nginx -t`, automatický rollback a potvrzený graceful reload. Vyžaduje Plugin API `^1.1.0`; starší Core jej proto v katalogu neuvidí.
+NGINX Manager uses only `session.read`, `nginx.read`, and `nginx.manage`. It supports inventory and restricted configuration reading, `nginx -T`, editing files up to 512 KiB with timestamped backups, `nginx -t`, automatic rollback, and a confirmed graceful reload. It requires Plugin API `^1.1.0`, so older Core versions do not display it in the catalog.
 
-File Manager používá existující ověřenou SSH relaci, ale místo obecného vzdáleného shellu dostává jen capability `files.read`, `files.write` a `files.transfer`. Nabízí interaktivní vícenásobný výběr, řazení, filtrování, breadcrumbs, kontextové menu, klávesové zkratky a přibalený offline Monaco Editor s limitem 25 MiB. Core zajišťuje atomický zápis, multi-upload souborů/složek, rekurzivní hromadný download, potvrzované rekurzivní mazání a export výběru jako ZIP, TAR nebo TAR.GZ. Protože alfa buildy zatím sdílejí verzi `0.0.1`, plugin na starším Core bez rozšířeného `files.*` zobrazí požadavek na aktualizaci aplikace a své ovládání bezpečně deaktivuje. Sudo save, vzdálené rozbalování archivů, fronta přenosů a resume zatím nejsou implementované.
+File Manager uses an existing verified SSH session, but receives only the `files.read`, `files.write`, and `files.transfer` capabilities instead of a general-purpose remote shell. It provides interactive multiple selection, sorting, filtering, breadcrumbs, a context menu, keyboard shortcuts, and a bundled offline Monaco Editor with a 25 MiB limit. Core provides atomic writes, multi-upload of files and folders, recursive batch downloads, confirmed recursive deletion, and export of selected items as ZIP, TAR, or TAR.GZ. Because alpha builds currently share version `0.0.1`, the plugin detects older Core builds without the extended `files.*` API, requests an application update, and safely disables its controls. Sudo save, remote archive extraction, transfer queues, and resume are not yet implemented.
 
-Nainstalovaný plugin se neporovnává jen podle verze manifestu. Registry uchovává také serverové release ID a SHA-512, takže lze nabídnout a atomicky přeinstalovat novější alfa build se stejnou verzí, například aktualizovaný `chj.key-generator` 0.0.1.
+Installed plugins are not compared by manifest version alone. The registry also stores the server release ID and SHA-512, allowing a newer alpha build with the same version to be offered and atomically reinstalled—for example, an updated `chj.key-generator` 0.0.1 build.
 
-SSH profil může používat IP adresu i DNS hostname. Core nejprve zkusí systémový resolver a při jeho chybě provede přímé DNS dotazy A/AAAA; `ssh2` potom dostane již vybranou číselnou adresu. Pokud jsou dostupné oba typy záznamu, pro současnou konfiguraci preferuje IPv4. Host-key databáze, UI i auditní log nadále používají původní DNS jméno, takže překlad neoslabuje kontrolu identity serveru. Teprve DNS jméno bez použitelného záznamu vrátí `SSH_DNS_RESOLUTION_FAILED`.
+An SSH profile can use either an IP address or a DNS hostname. Core first tries the system resolver and, if it fails, performs direct A/AAAA DNS queries; `ssh2` then receives the selected numeric address. When both record types are available, the current configuration prefers IPv4. The host-key database, UI, and audit log continue to use the original DNS name, so resolution does not weaken server identity verification. Only a DNS name without a usable record returns `SSH_DNS_RESOLUTION_FAILED`.
