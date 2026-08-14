@@ -28,6 +28,7 @@ function releasePayload(bytes) {
       size: bytes.length,
       filename: "CH-J.dmg",
       download_url: `${baseUrl}files/apps/mac/0.0.2-arm64/CH-J.dmg`,
+      signature_url: `${baseUrl}files/apps/mac/0.0.2-arm64/CH-J.dmg.asc`,
       published_at: "2026-08-07T17:30:00+02:00"
     }
   };
@@ -119,11 +120,19 @@ test("provider downloads exact bytes and verifies SHA-512", async (t) => {
   const provider = new HashUrlProvider({
     baseUrls: [baseUrl],
     downloadRoot: root,
-    fetchImpl: async () => new Response(bytes, { status: 200, headers: { "content-length": String(bytes.length) } })
+    signatureVerifier: {
+      async verifyFile() {
+        return { valid: true, primaryFingerprint: "0".repeat(40), signingFingerprints: ["1".repeat(40)] };
+      }
+    },
+    fetchImpl: async (url) => String(url).endsWith(".asc")
+      ? new Response("test-signature", { status: 200 })
+      : new Response(bytes, { status: 200, headers: { "content-length": String(bytes.length) } })
   });
   const release = {
     ...payload.release,
-    downloadUrl: payload.release.download_url
+    downloadUrl: payload.release.download_url,
+    signatureUrl: payload.release.signature_url
   };
   const result = await provider.downloadAndVerify(release);
   assert.equal(fs.readFileSync(result.path, "utf8"), bytes.toString("utf8"));
@@ -140,9 +149,70 @@ test("provider deletes staging file when SHA-512 does not match", async (t) => {
   const provider = new HashUrlProvider({
     baseUrls: [baseUrl],
     downloadRoot: root,
+    signatureVerifier: { async verifyFile() { throw new Error("must not be reached"); } },
     fetchImpl: async () => new Response(actual, { status: 200 })
   });
-  await assert.rejects(() => provider.downloadAndVerify({ ...payload.release, downloadUrl: payload.release.download_url }), /SHA-512/);
+  await assert.rejects(() => provider.downloadAndVerify({
+    ...payload.release,
+    downloadUrl: payload.release.download_url,
+    signatureUrl: payload.release.signature_url
+  }), /SHA-512/);
   const remaining = fs.readdirSync(path.dirname(path.join(root, `${payload.release.version}-${payload.release.id}`, payload.release.filename)));
   assert.equal(remaining.some((name) => name.endsWith(".part")), false);
+});
+
+test("provider removes an artifact when mandatory OpenPGP verification fails", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "chj-updates-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const bytes = Buffer.from("unsigned release bytes");
+  const payload = releasePayload(bytes);
+  const provider = new HashUrlProvider({
+    baseUrls: [baseUrl],
+    downloadRoot: root,
+    signatureVerifier: { async verifyFile() { throw new Error("invalid signature"); } },
+    fetchImpl: async (url) => String(url).endsWith(".asc")
+      ? new Response("bad-signature", { status: 200 })
+      : new Response(bytes, { status: 200 })
+  });
+  const release = {
+    ...payload.release,
+    downloadUrl: payload.release.download_url,
+    signatureUrl: payload.release.signature_url
+  };
+  await assert.rejects(() => provider.downloadAndVerify(release), /invalid signature/);
+  const destination = path.join(root, `${release.version}-${release.id}`, release.filename);
+  assert.equal(fs.existsSync(destination), false);
+  assert.equal(fs.existsSync(`${destination}.asc`), false);
+});
+
+test("provider re-hashes the same private-cache artifact immediately before installation", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "chj-updates-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const bytes = Buffer.from("verified release bytes");
+  const payload = releasePayload(bytes);
+  const signatureVerifier = {
+    calls: 0,
+    async verifyFile() {
+      this.calls += 1;
+      return { valid: true, primaryFingerprint: "0".repeat(40), signingFingerprints: ["1".repeat(40)] };
+    }
+  };
+  const provider = new HashUrlProvider({
+    baseUrls: [baseUrl],
+    downloadRoot: root,
+    signatureVerifier,
+    fetchImpl: async (url) => String(url).endsWith(".asc")
+      ? new Response("test-signature", { status: 200 })
+      : new Response(bytes, { status: 200 })
+  });
+  const release = {
+    ...payload.release,
+    downloadUrl: payload.release.download_url,
+    signatureUrl: payload.release.signature_url
+  };
+  const downloaded = await provider.downloadAndVerify(release);
+  fs.chmodSync(downloaded.path, 0o600);
+  fs.writeFileSync(downloaded.path, Buffer.from("tampered release bytes"));
+  await assert.rejects(() => provider.reverifyForInstall(downloaded, release), /changed after verification|size changed/);
+  assert.equal(signatureVerifier.calls, 1, "tampered bytes must be rejected before the second OpenPGP pass");
 });

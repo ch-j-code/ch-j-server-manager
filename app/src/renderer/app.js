@@ -110,7 +110,7 @@ function renderUpdate(updateState) {
   renderReleaseCatalog(updateState);
   if (updateState.downloaded) {
     elements.updateHeadline.textContent = t("updates.downloaded", { version: release?.version || "?" });
-    elements.updateMessage.textContent = `${updateState.downloaded.filename} · ${formatBytes(updateState.downloaded.size)}`;
+    elements.updateMessage.textContent = `${updateState.downloaded.filename} · ${formatBytes(updateState.downloaded.size)} · ${t("updates.signatureVerified")}`;
     elements.updateHash.hidden = false;
     elements.updateHash.textContent = `SHA-512 ${updateState.downloaded.sha512}`;
     elements.revealUpdateButton.hidden = false;
@@ -610,16 +610,28 @@ elements.connectButton.addEventListener("click", () => connectTerminal().catch((
 elements.disconnectButton.addEventListener("click", async () => { await api.disconnectSsh(TERMINAL_SESSION_ID); });
 elements.checkUpdateButton.addEventListener("click", checkUpdates);
 elements.downloadUpdateButton.addEventListener("click", async () => {
-  setBusy(elements.downloadUpdateButton, true, t("updates.downloading"));
+  setBusy(elements.downloadUpdateButton, true, t("updates.downloadingAndVerifying"));
+  elements.updateHeadline.textContent = t("updates.verifyingSignature");
   try { renderUpdate(await api.downloadUpdate()); }
-  catch (error) { elements.updateHeadline.textContent = t("updates.downloadRejected"); elements.updateMessage.textContent = errorText(error); }
+  catch (_error) {
+    elements.updateHeadline.textContent = t("updates.downloadRejected");
+    elements.updateMessage.textContent = t("updates.signatureFailure");
+    elements.installUpdateButton.hidden = true;
+    elements.revealUpdateButton.hidden = true;
+  }
   finally { setBusy(elements.downloadUpdateButton, false, t("updates.download")); }
 });
 elements.installUpdateButton.addEventListener("click", async () => {
   const release = state.update?.release;
   if (!release || !window.confirm(t("updates.installConfirm", { version: release.version, date: formatReleaseDate(release.publishedAt) }))) return;
+  setBusy(elements.installUpdateButton, true, t("updates.verifyingSignature"));
   try { await api.installUpdate(); }
-  catch (error) { elements.updateHeadline.textContent = t("updates.installFailed"); elements.updateMessage.textContent = errorText(error); }
+  catch (_error) {
+    try { renderUpdate(await api.getUpdateState()); } catch {}
+    elements.updateHeadline.textContent = t("updates.installFailed");
+    elements.updateMessage.textContent = t("updates.installFailure");
+    elements.installUpdateButton.hidden = true;
+  } finally { setBusy(elements.installUpdateButton, false, t("updates.install")); }
 });
 elements.revealUpdateButton.addEventListener("click", () => api.revealUpdate());
 elements.updateViewChannelSelect.addEventListener("change", async () => {
