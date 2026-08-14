@@ -26,6 +26,7 @@ function payload(overrides = {}) {
       size: 123,
       filename: "CH-J-Server-Manager.exe",
       download_url: "https://192.168.10.154/files/apps/win/update.exe",
+      signature_url: "https://192.168.10.154/files/apps/win/update.exe.asc",
       ...overrides
     }
   };

@@ -10,6 +10,14 @@ const lock = JSON.parse(fs.readFileSync(path.join(projectRoot, "package-lock.jso
 const outputPath = path.join(projectRoot, "THIRD_PARTY_NOTICES.txt");
 const packages = new Map();
 
+// Electron 43 downloads its runtime lazily. The build copies license files from
+// that runtime, so make the documented `npm ci` -> `npm run build:*` flow
+// deterministic on every supported OS without a platform-specific shell step.
+const electronExecutable = require("electron");
+if (!fs.statSync(electronExecutable, { throwIfNoEntry: false })?.isFile()) {
+  throw new Error("Electron runtime is unavailable after dependency installation.");
+}
+
 function declaredLicense(value) {
   if (typeof value === "string") return value;
   if (Array.isArray(value)) return value.map(declaredLicense).filter(Boolean).join(" OR ");

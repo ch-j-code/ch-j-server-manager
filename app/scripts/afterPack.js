@@ -20,4 +20,9 @@ module.exports = async function afterPack(context) {
   assertFile(path.join(licenses, "THIRD_PARTY_LICENSES.zip"), null, 1000000);
   assertFile(path.join(licenses, "ELECTRON_LICENSE.txt"), /Copyright \(c\) Electron contributors/i);
   assertFile(path.join(licenses, "CHROMIUM_LICENSES.html"), /Chromium/, 1000000);
+  assertFile(
+    path.join(resources, "signing", "ch-j-signing-public.asc"),
+    /-----BEGIN PGP PUBLIC KEY BLOCK-----/,
+    1000
+  );
 };

@@ -32,18 +32,9 @@ Alpha distribution notes:
 - file browsing, editing, upload, download, deletion, and ZIP/TAR/TAR.GZ export through a restricted SFTP interface;
 - Czech, German, and English user interfaces;
 - installable first-party plugins for System Monitor, Key Generator, Log Viewer, Users, File Manager, and NGINX Manager;
-- a bundled local Hash & Checksum plugin for calculation, verification, comparison, and checksum manifests;
 - sandboxed plugin windows with capability-based access to Core services;
 - alpha, beta, and stable update channels;
 - application updates protected by size checks, SHA-512, and mandatory detached OpenPGP signatures.
-
-## Hash & Checksum and Plugin API
-
-The current Plugin API is `1.2.0`. Plugins requiring `^1.0.0` or `^1.1.0` remain compatible. Hash & Checksum is a bundled first-party plugin and uses only the narrow `local.hash` permission.
-
-Core owns every native file, directory, manifest, and export dialog. It gives the sandboxed plugin opaque, plugin-owned selection tokens rather than raw paths, rejects tokens belonging to another plugin, and keeps filesystem access out of the renderer. Hash jobs run in worker threads, stream bounded chunks, support progress and cancellation, and verify stable file identity before returning results. Directory and manifest handling rejects symlinks, traversal, absolute paths, drive paths, and UNC paths.
-
-Hashing is local-only: the plugin has no network, SSH, or SFTP hashing capability and does not upload file contents or digests. It supports individual files, batches, recursive directories, file comparison, and GNU, BSD, and SFV manifests across 49 algorithms. MD5 and SHA-1 are retained only for legacy compatibility; fast hashes and checksums are explicitly non-cryptographic.
 
 ## Security
 

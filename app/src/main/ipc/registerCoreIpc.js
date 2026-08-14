@@ -11,7 +11,7 @@ const PRIVATE_KEY_DIALOG_COPY = Object.freeze({
 function registerCoreIpc(options) {
   const {
     ipcMain, shell, dialog, app, configStore, pluginRegistry, pluginService, pluginRuntime, profileService,
-    sessionManager, vaultStore, updateService, getMainWindow, logger
+    sessionManager, vaultStore, updateService, updateInstallerLauncher, getMainWindow, logger
   } = options;
 
   function assertTrustedSender(event) {
@@ -145,12 +145,18 @@ function registerCoreIpc(options) {
   handle("updates:select", async (payload = {}) => updateService.select(payload.id));
   handle("updates:download", async () => updateService.download());
   handle("updates:install", async () => {
-    const filePath = updateService.getVerifiedDownloadPath();
-    if (!filePath) throw new Error("No verified update has been downloaded.");
-    const error = await shell.openPath(filePath);
-    if (error) throw new Error(`The installer could not be opened: ${error}`);
+    // The renderer supplies neither a path nor a verification flag. The main
+    // process re-hashes and re-verifies its internally tracked artifact here.
+    const filePath = await updateService.prepareInstallerLaunch();
+    const result = await updateInstallerLauncher.install(filePath);
     updateService.markInstallerLaunched();
-    return { ok: true };
+    if (result.restartApplication) {
+      setTimeout(() => {
+        app.relaunch();
+        app.quit();
+      }, 250).unref?.();
+    }
+    return { ok: true, installed: result.installed === true, restarting: result.restartApplication === true };
   });
   handle("updates:reveal", async () => {
     const filePath = updateService.getVerifiedDownloadPath();

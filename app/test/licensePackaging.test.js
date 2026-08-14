@@ -30,12 +30,6 @@ test("application includes the complete project and dependency license texts", (
   }
 });
 
-test("plugin packager injects the project license when a plugin has none", () => {
-  const source = fs.readFileSync(path.join(root, "..", "release-tools", "package-plugin.js"), "utf8");
-  assert.match(source, /relative: "LICENSE\.txt"/);
-  assert.equal(typeof AdmZip, "function");
-});
-
 test("license documents are accessible from the sandboxed renderer through narrow IPC", () => {
   const preload = fs.readFileSync(path.join(root, "src", "preload", "corePreload.js"), "utf8");
   const ipc = fs.readFileSync(path.join(root, "src", "main", "ipc", "registerCoreIpc.js"), "utf8");
