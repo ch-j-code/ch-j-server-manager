@@ -81,6 +81,12 @@ The following features are planned but not yet available:
 
 This list is not exhaustive. Behavior and data formats may still change during the alpha phase.
 
+## Repository boundary
+
+The complete desktop application source tree lives in `app/`. Dependency installation, tests, development startup, and supported platform builds run from that directory without requiring source files or tooling from sibling projects.
+
+An update service, independently distributed plugin packages, and release tooling may integrate with the application through public APIs, package formats, or build artifacts, but they are not application runtime, test, or build dependencies. Bundled first-party plugins under `app/src/main/firstPartyPlugins/` and the internal Core plugin framework under `app/src/main/plugins/` are part of the application itself.
+
 ## Development
 
 Requirements:

@@ -81,6 +81,12 @@ The following features are planned but not yet available:
 
 This list is not exhaustive. Behavior and data formats may still change during the alpha phase.
 
+## Standalone application source
+
+This `app/` directory is the complete, self-contained desktop application source tree. It can be copied into an otherwise empty working directory and used for dependency installation, testing, development startup, and supported platform builds without any sibling source projects.
+
+The application communicates with an update service through its public HTTPS contract and supports independently distributed plugin packages through Plugin API 1.2. External services, plugin sources, and release tooling are not runtime, test, or build dependencies. Bundled first-party plugins in `src/main/firstPartyPlugins/` and the internal plugin framework in `src/main/plugins/` are included in this application tree.
+
 ## Development
 
 Requirements:
