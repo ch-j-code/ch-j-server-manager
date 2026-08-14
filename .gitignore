@@ -3,6 +3,8 @@
 !/.github/
 !/.gitignore
 !/.gitleaks.toml
+!/LICENSE
+!/README.md
 !/app/
 
 # macOS and editor metadata
