@@ -3,6 +3,8 @@
 !/.github/
 !/.gitignore
 !/.gitleaks.toml
+!/LICENSE
+!/README.md
 !/app/
 
 # macOS and editor metadata
@@ -42,3 +44,14 @@ web/sm-ch-j.de.cz.eu/data/*.lock
 **/*.sqlite
 **/*.sqlite3
 **/*.log
+
+# Workspace-only integration tests belong to the separate web/plugin projects.
+app/test/faqPortal.test.js
+app/test/fileManagerPlugin.test.js
+app/test/nginxManagerPlugin.test.js
+app/test/systemMonitorPlugin.test.js
+app/test/updatePortal.test.js
+app/test/visitorCounter.test.js
+app/test/webI18n.test.js
+app/test/webSeo.test.js
+app/test/wikiPortal.test.js

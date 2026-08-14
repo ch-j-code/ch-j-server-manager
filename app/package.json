@@ -11,19 +11,22 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --enable-logging",
-    "test": "node --test",
+    "test": "node scripts/runCoreTests.js",
     "licenses:generate": "node scripts/generateThirdPartyNotices.js",
     "prepare:release": "npm run licenses:generate && npm run stamp:build",
     "stamp:build": "node scripts/stampBuild.js",
     "prebuild": "npm run prepare:release",
     "build": "electron-builder",
-    "predist:win": "npm run prepare:release",
-    "dist:win": "electron-builder --win nsis --x64",
-    "predist:mac": "npm run prepare:release",
-    "dist:mac": "electron-builder --mac dmg --arm64 && npm run package:mac:installer",
-    "package:mac:installer": "node scripts/packageMacInstaller.js",
-    "predist:linux": "npm run prepare:release",
-    "dist:linux": "electron-builder --linux deb --x64"
+    "prebuild:mac": "npm run prepare:release",
+    "build:mac": "electron-builder --mac && npm run package:mac:installer",
+    "prebuild:win": "npm run prepare:release",
+    "build:win": "electron-builder --win",
+    "prebuild:linux": "npm run prepare:release",
+    "build:linux": "electron-builder --linux",
+    "dist:mac": "npm run build:mac",
+    "dist:win": "npm run build:win",
+    "dist:linux": "npm run build:linux",
+    "package:mac:installer": "node scripts/packageMacInstaller.js"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.11.0",
@@ -31,6 +34,7 @@
     "adm-zip": "^0.6.0",
     "archiver": "^5.3.2",
     "builder": "^5.0.0",
+    "openpgp": "^6.3.1",
     "ssh2": "^1.17.0"
   },
   "devDependencies": {
@@ -77,6 +81,10 @@
       {
         "from": "node_modules/electron/dist/LICENSES.chromium.html",
         "to": "licenses/CHROMIUM_LICENSES.html"
+      },
+      {
+        "from": "ch-j-signing-public.asc",
+        "to": "signing/ch-j-signing-public.asc"
       }
     ],
     "afterPack": "scripts/afterPack.js",
@@ -87,7 +95,12 @@
     "win": {
       "icon": "build/icon.png",
       "target": [
-        "nsis"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "nsis": {
@@ -111,7 +124,12 @@
     "linux": {
       "icon": "build/icon.png",
       "target": [
-        "deb"
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "category": "Utility",
       "synopsis": "SSH and server management application",

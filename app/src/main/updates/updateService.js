@@ -15,6 +15,7 @@ class UpdateService {
     this.releases = [];
     this.selectedReleaseId = null;
     this.lastVerifiedDownload = null;
+    this.installerLaunchAuthorized = false;
     this.operation = null;
   }
 
@@ -34,7 +35,10 @@ class UpdateService {
         releaseId: this.lastVerifiedDownload.releaseId,
         filename: this.lastVerifiedDownload.filename,
         size: this.lastVerifiedDownload.size,
-        sha512: this.lastVerifiedDownload.sha512
+        sha512: this.lastVerifiedDownload.sha512,
+        signatureVerified: this.lastVerifiedDownload.signatureVerified === true,
+        primaryFingerprint: this.lastVerifiedDownload.primaryFingerprint,
+        signingFingerprints: this.lastVerifiedDownload.signingFingerprints
       } : null
     };
   }
@@ -63,6 +67,7 @@ class UpdateService {
         sourceBaseUrl: catalog.sourceBaseUrl
       };
       this.lastVerifiedDownload = null;
+      this.installerLaunchAuthorized = false;
       this.logger?.info("Update check completed.", {
         channel: config.updates.channel,
         updateAvailable: this.lastCheck.updateAvailable,
@@ -86,6 +91,7 @@ class UpdateService {
       release
     };
     this.lastVerifiedDownload = null;
+    this.installerLaunchAuthorized = false;
     return this.getState();
   }
 
@@ -93,14 +99,23 @@ class UpdateService {
     if (this.operation) throw new Error("Another update operation is already running.");
     if (!this.lastCheck?.release) throw new Error("No update release is selected.");
     this.operation = "downloading";
+    this.lastVerifiedDownload = null;
+    this.installerLaunchAuthorized = false;
     try {
       const provider = this.providerFactory(this.configStore.get().updates);
       this.lastVerifiedDownload = await provider.downloadAndVerify(this.lastCheck.release);
+      if (this.lastVerifiedDownload.signatureVerified !== true) {
+        this.lastVerifiedDownload = null;
+        throw new Error("The update did not pass mandatory OpenPGP verification.");
+      }
       this.lastVerifiedDownload.releaseId = this.lastCheck.release.id;
-      this.logger?.info("Update downloaded and verified with SHA-512.", {
+      this.installerLaunchAuthorized = false;
+      this.logger?.info("Update downloaded and verified with SHA-512 and OpenPGP.", {
         filename: this.lastVerifiedDownload.filename,
         size: this.lastVerifiedDownload.size,
-        reused: this.lastVerifiedDownload.reused
+        reused: this.lastVerifiedDownload.reused,
+        primaryFingerprint: this.lastVerifiedDownload.primaryFingerprint,
+        signingFingerprints: this.lastVerifiedDownload.signingFingerprints
       });
       return this.getState();
     } finally {
@@ -109,19 +124,44 @@ class UpdateService {
   }
 
   getVerifiedDownloadPath() {
-    return this.lastVerifiedDownload?.path || null;
+    return this.lastVerifiedDownload?.signatureVerified === true
+      ? this.lastVerifiedDownload.path
+      : null;
+  }
+
+  async prepareInstallerLaunch() {
+    if (this.operation) throw new Error("Another update operation is already running.");
+    const release = this.lastCheck?.release;
+    if (!release || !this.lastVerifiedDownload || this.lastVerifiedDownload.releaseId !== release.id) {
+      throw new Error("No verified update release is ready to install.");
+    }
+    this.operation = "verifying-signature";
+    this.installerLaunchAuthorized = false;
+    try {
+      const provider = this.providerFactory(this.configStore.get().updates);
+      const filePath = await provider.reverifyForInstall(this.lastVerifiedDownload, release);
+      this.installerLaunchAuthorized = true;
+      return filePath;
+    } catch (error) {
+      this.lastVerifiedDownload = null;
+      throw error;
+    } finally {
+      this.operation = null;
+    }
   }
 
   cleanupDownloads() {
     const provider = this.providerFactory(this.configStore.get().updates);
     const result = provider.cleanupDownloads?.() || { cleaned: false };
     this.lastVerifiedDownload = null;
+    this.installerLaunchAuthorized = false;
     return result;
   }
 
   markInstallerLaunched() {
     const release = this.lastCheck?.release;
-    if (!release || !this.lastVerifiedDownload || this.lastVerifiedDownload.releaseId !== release.id) {
+    if (!release || !this.lastVerifiedDownload || this.lastVerifiedDownload.releaseId !== release.id
+      || this.lastVerifiedDownload.signatureVerified !== true || !this.installerLaunchAuthorized) {
       throw new Error("No verified update release is ready to install.");
     }
     this.configStore.recordLaunchedRelease({
@@ -130,6 +170,7 @@ class UpdateService {
       publishedAt: release.publishedAt,
       sha512: release.sha512
     });
+    this.installerLaunchAuthorized = false;
     return this.getState();
   }
 

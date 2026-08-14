@@ -112,6 +112,7 @@ function validateReleaseResponse(payload, expected) {
       size,
       filename: requireString(source.filename, "release.filename"),
       downloadUrl: requireString(source.download_url || source.download_path, "release.download_url"),
+      signatureUrl: requireString(source.signature_url || source.signature_path, "release.signature_url"),
       publishedAt: source.published_at ? String(source.published_at) : null
     }
   };

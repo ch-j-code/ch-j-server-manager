@@ -19,6 +19,8 @@ const { createTestHttpsFetch } = require("./security/testHttpsFetch");
 const { VaultStore } = require("./security/vaultStore");
 const { SessionManager } = require("./sessions/sessionManager");
 const { HashUrlProvider } = require("./updates/hashUrlProvider");
+const { OpenPgpVerifier } = require("./updates/openPgpVerifier");
+const { UpdateInstallerLauncher } = require("./updates/updateInstallerLauncher");
 const { UpdateService } = require("./updates/updateService");
 const buildInfo = require("../shared/buildInfo.json");
 
@@ -122,6 +124,13 @@ async function bootstrap() {
       logger
     })
   });
+  const signingPublicKeyPath = app.isPackaged
+    ? path.join(process.resourcesPath, "signing", "ch-j-signing-public.asc")
+    : path.join(app.getAppPath(), "ch-j-signing-public.asc");
+  const signatureVerifier = new OpenPgpVerifier({
+    publicKeyPath: signingPublicKeyPath,
+    logger
+  });
   updateService = new UpdateService({
     appVersion: app.getVersion(),
     buildId: buildInfo.buildId,
@@ -133,8 +142,14 @@ async function bootstrap() {
       baseUrls: updateConfig.baseUrls,
       downloadRoot: path.join(storageRoot, "updates", "downloads"),
       fetchImpl: testUpdateFetch,
+      signatureVerifier,
       logger
     })
+  });
+  const updateInstallerLauncher = new UpdateInstallerLauncher({
+    platform: process.platform,
+    shell,
+    logger
   });
 
   for (const [cache, service] of [["Core update", updateService], ["plugin package", pluginService]]) {
@@ -161,6 +176,7 @@ async function bootstrap() {
     sessionManager,
     vaultStore,
     updateService,
+    updateInstallerLauncher,
     getMainWindow: () => mainWindow,
     logger
   });

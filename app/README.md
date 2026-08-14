@@ -1,61 +1,105 @@
-# CH-J Server Manager Core
+# CH-J Server Manager
 
-A new implementation of CH-J Server Manager. The user-facing application name remains unchanged; “Core” refers only to the new architecture.
+CH-J Server Manager is a desktop application for securely administering Linux servers over SSH. It combines server profiles, an interactive terminal, file management, monitoring, log inspection, user administration, and NGINX management in one Electron application.
 
-## Current implementation scope
+The project is currently in **alpha**. It is suitable for testing, but some planned features and production distribution requirements are not complete yet. The internal name "Core" refers to the current application architecture; the product name remains CH-J Server Manager.
 
-- secure Electron bootstrap;
-- a single restricted preload bridge;
-- atomic non-sensitive configuration;
-- plugin manifests and an installed-plugin registry;
-- `HashUrlProvider` for the PHP channels `alpha`, `beta`, and `stable`, including the combined `all` view;
-- platform, architecture, version, size, and SHA-512 validation;
-- downloads to internal staging without automatic execution;
-- encrypted vault (scrypt + AES-256-GCM) with manual locking;
-- server profile creation and editing;
-- an optional SSH password stored separately in the encrypted vault and used automatically when the login field is empty;
-- multi-session SSH `SessionManager` with password/private-key authentication;
-- preliminary DNS resolution of SSH hostnames, a precise error for missing records, and IPv4 preference when both A and AAAA records exist;
-- mandatory SHA-256 SSH host-key verification, first-key confirmation, and explicit confirmation of a verified replacement when a key changes;
-- interactive terminal with input and resizing;
-- restricted SFTP transport in Core with absolute paths, an editor for files up to 25 MiB, multi-file upload/download transfers up to 16 GiB, and ZIP/TAR/TAR.GZ export;
-- i18n runtime with complete Czech, German, and English catalogs;
-- web catalog, SHA-512-verified installation, sandboxed execution, and removal of `.chjplugin` packages;
-- System Monitor (including CPU/RAM/swap/disk/network metrics), Key Generator, Log Viewer, Users, File Manager, and NGINX Manager plugins as separate installable packages;
-- shell UI and automated tests.
+## Download
 
-Migration of data from older versions, SFTP transfer queue/resume/sudo save, remote archive extraction, jump hosts/forwarding, Safe Mode, and other planned Tools are not yet implemented. A verified Core installer can be handed off to the platform manually; fully unattended installation is not enabled yet. An SSH password can optionally be stored in the vault; private-key passphrases are not stored and must be entered for each connection. Platform and release status is documented in `../PROJECT-STATUS.md`.
+Download the latest alpha build for your platform:
+
+| Platform | Architecture | Package |
+| --- | --- | --- |
+| macOS | Apple Silicon (`arm64`) | [Download for macOS](https://www.sm.ch-j.de/download.php?channel=alpha&platform=mac&arch=arm64) |
+| Windows | `x64` | [Download for Windows](https://www.sm.ch-j.de/download.php?channel=alpha&platform=win&arch=x64) |
+| Ubuntu/Debian | `x64` | [Download for Ubuntu](https://www.sm.ch-j.de/download.php?channel=alpha&platform=ubuntu&arch=x64) |
+
+Additional builds and release channels are available on the [CH-J Server Manager website](https://www.sm.ch-j.de/de/servermanager/).
+
+Alpha distribution notes:
+
+- macOS builds currently target Apple Silicon only. Test builds may be ad hoc signed and can require manual approval in **Privacy & Security** until Developer ID signing and notarization are enabled.
+- Windows builds use an NSIS installer.
+- Ubuntu/Debian builds use a `.deb` package. For an initial installation, use `sudo apt install ./<downloaded-file>.deb` if the graphical software center rejects the package as coming from an unknown publisher.
+- Back up important connection details before testing an alpha update.
+
+## Features
+
+- encrypted local vault using scrypt and AES-256-GCM;
+- server profiles with password and private-key SSH authentication;
+- mandatory SHA-256 SSH host-key verification and explicit handling of changed host keys;
+- multiple SSH sessions and an interactive terminal;
+- file browsing, editing, upload, download, deletion, and ZIP/TAR/TAR.GZ export through a restricted SFTP interface;
+- Czech, German, and English user interfaces;
+- installable first-party plugins for System Monitor, Key Generator, Log Viewer, Users, File Manager, and NGINX Manager;
+- sandboxed plugin windows with capability-based access to Core services;
+- alpha, beta, and stable update channels;
+- application updates protected by size checks, SHA-512, and mandatory detached OpenPGP signatures.
+
+## Security
+
+Update verification is performed in the Electron main process and fails closed. The application downloads the selected artifact and its detached `.asc` signature, checks the expected size and SHA-512 hash, and verifies the signature with the bundled CH-J public key. Immediately before installation, it re-checks the same private-cache files to reduce time-of-check/time-of-use risk. The renderer cannot supply an artifact path, public key, fingerprint, or a forged verification result.
+
+The long-term update trust anchor is the primary OpenPGP fingerprint:
+
+```text
+0D92 778A D8EC F85C 80E3  9248 48F2 433A D9CD F453
+```
+
+Valid signing subkeys may be rotated as long as they remain cryptographically bound to this primary key and are valid for signing. Revoked, expired, unknown, malformed, or otherwise invalid keys and signatures block installation.
+
+The alpha service is still undergoing distribution hardening. In particular, standard CA verification for the explicitly allowlisted update host is temporarily relaxed in test mode, and macOS production signing/notarization is not yet enabled. OpenPGP verification remains mandatory for application update artifacts, but alpha builds should not be treated as production releases.
+
+When connecting to a server for the first time, verify the displayed SSH host-key fingerprint through another trusted channel. If a known host key changes, verify both the old and new fingerprints before accepting the replacement.
+
+## Getting started
+
+On first launch, choose the interface language and create a vault master password. Then add a profile under **Servers** and connect from **Terminal**.
+
+The vault password cannot be recovered. **Forgot password / reset vault** deletes encrypted server profiles, saved SSH passwords, trusted host fingerprints, and other encrypted data. Update settings and installed plugins are preserved.
+
+Private-key passphrases are intentionally not stored and must be entered for each connection. An SSH account password can optionally be stored in the encrypted vault.
+
+## Current limitations
+
+The following features are planned but not yet available:
+
+- migration of data from older application versions;
+- resumable SFTP transfer queues and sudo-assisted saves;
+- remote archive extraction;
+- SSH jump hosts and port forwarding;
+- Safe Mode and additional tools.
+
+This list is not exhaustive. Behavior and data formats may still change during the alpha phase.
 
 ## Development
 
+Requirements:
+
+- Node.js 18 or newer;
+- npm;
+- the native toolchain required by Electron dependencies on the host platform.
+
+Use a separate `node_modules` installation on each operating system:
+
 ```bash
-npm install
+git clone https://github.com/ch-j-code/ch-j-server-manager.git
+cd ch-j-server-manager/app
+npm ci
 npm test
 npm start
 ```
 
-On first launch, the application asks you to create a vault master password between 4 and 64 characters long. Then create a profile under **Servers** and connect under **Terminal**. Always verify the first host-key fingerprint through another trusted channel as well.
+The repository uses one shared `package.json` and one shared `package-lock.json` for all supported platforms. Build on the target operating system with:
 
-If a known SSH host key changes, Core blocks the connection first and displays both the original and new SHA-256 fingerprints. The new fingerprint can be saved only through a separate warning that requires confirmation of both values; confirm it only after verifying them through another trusted channel.
+```bash
+npm run build:mac
+npm run build:win
+npm run build:linux
+```
 
-The lock screen provides **Forgot password / reset vault**. Because the data cannot be decrypted without the original password, resetting removes server profiles, trusted host fingerprints, and other encrypted data. Update settings and installed plugins are preserved.
+The configured outputs are a macOS DMG (`arm64`), a Windows NSIS installer (`x64`), and a Debian package (`x64`). The macOS build also creates an application ZIP for initial website distribution. Generated packages are written to `app/dist/` and are not committed.
 
-The language can be changed directly on the lock screen or under **Settings**. The `cs`, `de`, or `en` selection is stored in non-sensitive local configuration and applied on the next launch.
+## License
 
-The alpha updater uses only the HTTPS endpoint `https://sm.ch-j.de/`, defined in the main process. The public server already has a valid Let’s Encrypt certificate, but in temporary test mode Core still accepts any certificate from this single explicitly allowed host. HTTPS and the allowlist remain mandatory, but standard CA verification must be re-enabled as soon as possible. SHA-512 verifies the exact artifact contents, not the publisher’s identity.
-
-The channels use the same names in the application and on the PHP server: `alpha`, `beta`, and `stable`. The historical `dev` channel is not an alias and is rejected. Core updates and the plugin catalog store their channel selections separately. The `all` option is only a client-side view that safely loads and merges all three real channels. macOS distributions and updates are built only for Apple Silicon (`arm64`), not Intel (`x64`).
-
-`npm run dist:mac` creates two separate artifacts: a DMG for automatic updates and `*.app.zip` for initial installation from the website. The ZIP preserves the macOS bundle structure, and the build step verifies `codesign` both before and after packaging. Without a Developer ID Application certificate, only an ad hoc signed test build is produced, which may need to be allowed manually in Privacy & Security settings. For unattended web installation, the `.app` must be signed with Developer ID, use the hardened runtime, and be notarized by Apple.
-
-The Updates screen loads the complete compatible catalog for the current platform, architecture, and channel. Each release is distinguished by the server-provided `id` and `published_at`, so another build with the same version number can also be selected, downloaded, verified, and launched manually. Launching the installer is always manual and becomes available only after successful SHA-512 verification.
-
-The Plugin Manager loads the catalog only from the allowed origin `https://sm.ch-j.de/`; Core does not permit HTTP, direct IP addresses, or legacy QNAP addresses. In alpha mode, CA verification is temporarily disabled only for this origin. A size or SHA-512 mismatch is treated as a security error and the package is not used. Standalone `.chjplugin` packages are safely extracted to staging and atomically installed in the user directory. An installed plugin can be removed; Core closes its window before deleting all installed versions. This does not delete the vault or Core configuration. Plugin windows have their own sandbox, fixed preload, and capabilities derived from the verified manifest. The current Plugin API is `1.1.0`; the catalog receives this version in the `plugin_api` parameter and filters out incompatible releases. The alpha catalog publishes `chj.system-monitor`, `chj.key-generator`, `chj.log-viewer`, `chj.users`, `chj.file-manager`, and `chj.nginx-manager`.
-
-NGINX Manager uses only `session.read`, `nginx.read`, and `nginx.manage`. It supports inventory and restricted configuration reading, `nginx -T`, editing files up to 512 KiB with timestamped backups, `nginx -t`, automatic rollback, and a confirmed graceful reload. It requires Plugin API `^1.1.0`, so older Core versions do not display it in the catalog.
-
-File Manager uses an existing verified SSH session, but receives only the `files.read`, `files.write`, and `files.transfer` capabilities instead of a general-purpose remote shell. It provides interactive multiple selection, sorting, filtering, breadcrumbs, a context menu, keyboard shortcuts, and a bundled offline Monaco Editor with a 25 MiB limit. Core provides atomic writes, multi-upload of files and folders, recursive batch downloads, confirmed recursive deletion, and export of selected items as ZIP, TAR, or TAR.GZ. Because alpha builds currently share version `0.0.1`, the plugin detects older Core builds without the extended `files.*` API, requests an application update, and safely disables its controls. Sudo save, remote archive extraction, transfer queues, and resume are not yet implemented.
-
-Installed plugins are not compared by manifest version alone. The registry also stores the server release ID and SHA-512, allowing a newer alpha build with the same version to be offered and atomically reinstalled—for example, an updated `chj.key-generator` 0.0.1 build.
-
-An SSH profile can use either an IP address or a DNS hostname. Core first tries the system resolver and, if it fails, performs direct A/AAAA DNS queries; `ssh2` then receives the selected numeric address. When both record types are available, the current configuration prefers IPv4. The host-key database, UI, and audit log continue to use the original DNS name, so resolution does not weaken server identity verification. Only a DNS name without a usable record returns `SSH_DNS_RESOLUTION_FAILED`.
+CH-J Server Manager is licensed under the Apache License 2.0. Third-party notices and license texts are included in the repository and packaged distributions.

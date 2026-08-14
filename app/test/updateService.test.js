@@ -21,7 +21,17 @@ test("service exposes and selects distinct builds with the installed version", a
   const provider = {
     async listReleases() { return { releases: [newer, older], sourceBaseUrl: "https://192.168.10.154/" }; },
     async downloadAndVerify(selected) {
-      return { path: `/tmp/${selected.filename}`, filename: selected.filename, size: selected.size, sha512: selected.sha512, reused: false };
+      return {
+        path: `/tmp/${selected.filename}`,
+        signaturePath: `/tmp/${selected.filename}.asc`,
+        filename: selected.filename,
+        size: selected.size,
+        sha512: selected.sha512,
+        reused: false,
+        signatureVerified: true,
+        primaryFingerprint: "0".repeat(40),
+        signingFingerprints: ["1".repeat(40)]
+      };
     }
   };
   const service = new UpdateService({
