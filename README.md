@@ -1,71 +1,64 @@
-# CH-J Server Manager Core
+# CH-J Server Manager
 
-A new implementation of CH-J Server Manager. The user-facing application name remains unchanged; "Core" refers only to the new architecture.
+CH-J Server Manager is a desktop application for managing Linux servers from macOS, Windows, and Ubuntu. It combines secure SSH sessions, an interactive terminal, server profiles, an encrypted local vault, updates, and a sandboxed plugin system in one Electron application.
 
 ## Download
 
-Get the latest release for your platform:
+Get the latest alpha build for your platform:
 
-- **macOS (ARM64)**: [Download](https://www.sm.ch-j.de/download.php?channel=alpha&platform=mac&arch=arm64)
-- **Windows**: [Download](https://www.sm.ch-j.de/download.php?channel=alpha&platform=win&arch=x64)
-- **Ubuntu**: [Download](https://www.sm.ch-j.de/download.php?channel=alpha&platform=ubuntu&arch=x64)
+- [macOS for Apple Silicon](https://www.sm.ch-j.de/download.php?channel=alpha&platform=mac&arch=arm64)
+- [Windows x64](https://www.sm.ch-j.de/download.php?channel=alpha&platform=win&arch=x64)
+- [Ubuntu x64](https://www.sm.ch-j.de/download.php?channel=alpha&platform=ubuntu&arch=x64)
 
-For more versions and channels, visit [sm.ch-j.de](https://www.sm.ch-j.de/de/servermanager/)
+More versions and release channels are available at [sm.ch-j.de](https://www.sm.ch-j.de/de/servermanager/).
 
-## Current implementation scope
+## Features
 
-- secure Electron bootstrap;
-- a single restricted preload bridge;
-- atomic non-sensitive configuration;
-- plugin manifests and an installed-plugin registry;
-- `HashUrlProvider` for the PHP channels `alpha`, `beta`, and `stable`, including the combined `all` view;
-- platform, architecture, version, size, and SHA-512 validation;
-- downloads to internal staging without automatic execution;
-- encrypted vault (scrypt + AES-256-GCM) with manual locking;
-- server profile creation and editing;
-- an optional SSH password stored separately in the encrypted vault and used automatically when the login field is empty;
-- multi-session SSH `SessionManager` with password/private-key authentication;
-- preliminary DNS resolution of SSH hostnames, a precise error for missing records, and IPv4 preference when both A and AAAA records exist;
-- mandatory SHA-256 SSH host-key verification, first-key confirmation, and explicit confirmation of a verified replacement when a key changes;
-- interactive terminal with input and resizing;
-- restricted SFTP transport in Core with absolute paths, an editor for files up to 25 MiB, multi-file upload/download transfers up to 16 GiB, and ZIP/TAR/TAR.GZ export;
-- i18n runtime with complete Czech, German, and English catalogs;
-- web catalog, SHA-512-verified installation, sandboxed execution, and removal of `.chjplugin` packages;
-- System Monitor (including CPU/RAM/swap/disk/network metrics), Key Generator, Log Viewer, Users, File Manager, and NGINX Manager plugins as separate installable packages;
-- shell UI and automated tests.
+- encrypted local vault for profiles, credentials, and trusted SSH host keys;
+- multiple SSH sessions with password and private-key authentication;
+- interactive terminal, system metrics, user management, logs, and NGINX tools;
+- restricted SFTP file management with editing, transfers, and archive export;
+- platform- and integrity-checked application updates;
+- sandboxed plugins with explicit, narrowly scoped permissions;
+- Czech, English, and German user interface.
 
-Migration of data from older versions, SFTP transfer queue/resume/sudo save, remote archive extraction, jump hosts/forwarding, Safe Mode, and other planned Tools are not yet implemented. A verifie[...]
+## Hash & Checksum
+
+The bundled first-party **Hash & Checksum** plugin calculates and verifies hashes for files on the computer running CH-J Server Manager. It supports single files, batches, recursive directories, digest-based file comparison, and GNU, BSD, and SFV checksum manifests.
+
+All file processing is local: file contents and calculated digests are not sent to a server. Files can be accessed only after an explicit system file-picker selection. The plugin remains sandboxed and does not receive Node.js filesystem access or raw local paths.
+
+Supported families include SHA-2, SHA-3, SHAKE, BLAKE2, BLAKE3, KangarooTwelve, RIPEMD-160, Whirlpool, Tiger, Tiger2, xxHash, MurmurHash3, CityHash, FarmHash, HighwayHash, SipHash-2-4, FNV, CRC, and Adler-32.
+
+MD5 and SHA-1 are provided only for compatibility with old checksums because they are cryptographically broken. xxHash, MurmurHash, CityHash, FarmHash, HighwayHash, SipHash, FNV, CRC, and Adler-32 must not be treated as cryptographic integrity or security proofs.
+
+## Security model
+
+Plugin windows run with Electron sandboxing enabled, context isolation enabled, Node integration disabled, and a restrictive Content Security Policy. Core grants capabilities from each validated plugin manifest and keeps local filesystem access, network access, and remote server access separated.
+
+Always confirm a new SSH host-key fingerprint through a second trusted channel. If a known key changes, the application blocks the connection until both the previous and replacement fingerprints are explicitly reviewed.
 
 ## Development
 
+Requirements: a current Node.js release compatible with Electron 43 and npm.
+
 ```bash
-npm install
+cd app
+npm ci
 npm test
 npm start
 ```
 
-On first launch, the application asks you to create a vault master password between 4 and 64 characters long. Then create a profile under **Servers** and connect under **Terminal**. Always verify [...]
+Platform packaging commands are:
 
-If a known SSH host key changes, Core blocks the connection first and displays both the original and new SHA-256 fingerprints. The new fingerprint can be saved only through a separate warning that[...]
+```bash
+npm run dist:mac
+npm run dist:win
+npm run dist:linux
+```
 
-The lock screen provides **Forgot password / reset vault**. Because the data cannot be decrypted without the original password, resetting removes server profiles, trusted host fingerprints, and ot[...]
+Builds are produced for macOS ARM64, Windows x64, and Debian/Ubuntu x64. Platform signing and installer requirements still apply when creating distributable production artifacts.
 
-The language can be changed directly on the lock screen or under **Settings**. The `cs`, `de`, or `en` selection is stored in non-sensitive local configuration and applied on the next launch.
+## License
 
-The alpha updater uses only the HTTPS endpoint `https://sm.ch-j.de/`, defined in the main process. The public server already has a valid Let's Encrypt certificate, but in temporary test mode Cor[...]
-
-The channels use the same names in the application and on the PHP server: `alpha`, `beta`, and `stable`. The historical `dev` channel is not an alias and is rejected. Core updates and the plugin c[...]
-
-`npm run dist:mac` creates two separate artifacts: a DMG for automatic updates and `*.app.zip` for initial installation from the website. The ZIP preserves the macOS bundle structure, and the buil[...]
-
-The Updates screen loads the complete compatible catalog for the current platform, architecture, and channel. Each release is distinguished by the server-provided `id` and `published_at`, so anoth[...]
-
-The Plugin Manager loads the catalog only from the allowed origin `https://sm.ch-j.de/`; Core does not permit HTTP, direct IP addresses, or legacy QNAP addresses. In alpha mode, CA verification is[...]
-
-NGINX Manager uses only `session.read`, `nginx.read`, and `nginx.manage`. It supports inventory and restricted configuration reading, `nginx -T`, editing files up to 512 KiB with timestamped backu[...]
-
-File Manager uses an existing verified SSH session, but receives only the `files.read`, `files.write`, and `files.transfer` capabilities instead of a general-purpose remote shell. It provides inte[...]
-
-Installed plugins are not compared by manifest version alone. The registry also stores the server release ID and SHA-512, allowing a newer alpha build with the same version to be offered and atomi[...]
-
-An SSH profile can use either an IP address or a DNS hostname. Core first tries the system resolver and, if it fails, performs direct A/AAAA DNS queries; `ssh2` then receives the selected numeric [...]
+CH-J Server Manager is licensed under the [Apache License 2.0](app/LICENSE). Third-party notices and complete bundled dependency license texts are included with the application.

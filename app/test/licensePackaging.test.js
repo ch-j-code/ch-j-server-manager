@@ -22,8 +22,11 @@ test("application includes the complete project and dependency license texts", (
   }
   assert.equal(packageJson.build.afterPack, "scripts/afterPack.js");
   const bundle = new AdmZip(path.join(root, "THIRD_PARTY_LICENSES.zip"));
-  for (const filename of ["THIRD_PARTY_NOTICES.txt", "ELECTRON_LICENSE.txt", "CHROMIUM_LICENSES.html", "MONACO_LICENSE.txt", "MONACO_THIRD_PARTY_NOTICES.txt", "SHA512SUMS.txt"]) {
+  for (const filename of ["THIRD_PARTY_NOTICES.txt", "ELECTRON_LICENSE.txt", "CHROMIUM_LICENSES.html", "MONACO_LICENSE.txt", "MONACO_THIRD_PARTY_NOTICES.txt", "FB_TIGER_HASH_LICENSE.txt", "GOOGLE_CITYHASH_LICENSE.txt", "SHA512SUMS.txt"]) {
     assert.ok(bundle.getEntry(filename), filename);
+  }
+  for (const dependency of ["@noble/hashes@2.3.0", "farmhashjs@1.0.1", "hash-wasm@4.12.0", "highwayhasher@0.4.4", "fb-tiger-hash@1.0.0", "google-cityhash"]) {
+    assert.match(thirdParty, new RegExp(dependency.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
 });
 

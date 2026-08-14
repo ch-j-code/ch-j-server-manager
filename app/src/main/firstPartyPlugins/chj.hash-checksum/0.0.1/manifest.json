@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "chj.hash-checksum",
+  "name": "Hash & Checksum",
+  "description": "Local file hashing, verification, comparison, and checksum manifests.",
+  "version": "0.0.1",
+  "publisher": "CH-J",
+  "entry": "ui/index.html",
+  "pluginApi": "^1.2.0",
+  "minAppVersion": "0.0.1",
+  "permissions": [
+    "local.hash"
+  ]
+}

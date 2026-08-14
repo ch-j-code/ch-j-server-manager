@@ -191,17 +191,22 @@ function renderPlugins() {
     const actions = document.createElement("div"); actions.className = "plugin-actions";
     const open = document.createElement("button"); open.type = "button"; open.className = "button"; open.textContent = t("plugins.open");
     open.addEventListener("click", async () => { try { await api.openPlugin(plugin.id); } catch (error) { window.alert(errorText(error)); } });
-    const remove = document.createElement("button"); remove.type = "button"; remove.className = "button danger"; remove.textContent = t("plugins.remove");
-    remove.addEventListener("click", async () => {
-      if (!window.confirm(t("plugins.removeConfirm", { name: plugin.name }))) return;
-      remove.disabled = true;
-      try {
-        state.pluginState = await api.uninstallPlugin(plugin.id);
-        state.plugins = state.pluginState.installed;
-        renderPlugins();
-      } catch (error) { window.alert(errorText(error)); remove.disabled = false; }
-    });
-    actions.append(open, remove);
+    actions.append(open);
+    if (plugin.bundled) {
+      const bundled = document.createElement("span"); bundled.className = "release-select-label"; bundled.textContent = t("plugins.bundled"); actions.append(bundled);
+    } else {
+      const remove = document.createElement("button"); remove.type = "button"; remove.className = "button danger"; remove.textContent = t("plugins.remove");
+      remove.addEventListener("click", async () => {
+        if (!window.confirm(t("plugins.removeConfirm", { name: plugin.name }))) return;
+        remove.disabled = true;
+        try {
+          state.pluginState = await api.uninstallPlugin(plugin.id);
+          state.plugins = state.pluginState.installed;
+          renderPlugins();
+        } catch (error) { window.alert(errorText(error)); remove.disabled = false; }
+      });
+      actions.append(remove);
+    }
     row.append(name, version, permissions, actions); elements.pluginRows.append(row);
   }
   renderPluginCatalog();
