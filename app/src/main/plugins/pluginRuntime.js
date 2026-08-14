@@ -28,6 +28,7 @@ class PluginRuntime {
     this.keyGeneratorService = options.keyGeneratorService;
     this.logService = options.logService;
     this.remoteFileService = options.remoteFileService;
+    this.localHashService = options.localHashService;
     this.getMainWindow = options.getMainWindow;
     this.isVaultUnlocked = options.isVaultUnlocked;
     this.preload = options.preload;
@@ -36,6 +37,10 @@ class PluginRuntime {
     this.logger = options.logger;
     this.contexts = new Map();
     this.windows = new Map();
+    this.localHashService?.on("progress", ({ pluginId, job }) => {
+      const window = this.windows.get(pluginId);
+      if (window && !window.isDestroyed()) window.webContents.send("plugin:hashing:progress", job);
+    });
   }
 
   registerIpc(ipcMain) {
@@ -77,6 +82,20 @@ class PluginRuntime {
     handle("plugin:files:download", "files.transfer", (_context, payload) => this.remoteFileService.download(payload.sessionId, payload.path));
     handle("plugin:files:downloadMany", "files.transfer", (_context, payload) => this.remoteFileService.downloadMany(payload.sessionId, payload.paths));
     handle("plugin:files:downloadArchive", "files.transfer", (_context, payload) => this.remoteFileService.downloadArchive(payload.sessionId, payload.paths, payload.format));
+    handle("plugin:hashing:algorithms", "local.hash", () => this.localHashService.getAlgorithms());
+    handle("plugin:hashing:selectFiles", "local.hash", (context, payload) => this.localHashService.selectFiles(context.manifest.id, payload));
+    handle("plugin:hashing:selectDirectory", "local.hash", (context) => this.localHashService.selectDirectory(context.manifest.id));
+    handle("plugin:hashing:selectManifest", "local.hash", (context) => this.localHashService.selectManifest(context.manifest.id));
+    handle("plugin:hashing:selectManifestDestination", "local.hash", (context, payload) => this.localHashService.selectManifestDestination(context.manifest.id, payload));
+    handle("plugin:hashing:start", "local.hash", (context, payload) => this.localHashService.start(context.manifest.id, payload));
+    handle("plugin:hashing:verify", "local.hash", (context, payload) => this.localHashService.verify(context.manifest.id, payload));
+    handle("plugin:hashing:compare", "local.hash", (context, payload) => this.localHashService.compare(context.manifest.id, payload));
+    handle("plugin:hashing:generateManifest", "local.hash", (context, payload) => this.localHashService.generateManifest(context.manifest.id, payload));
+    handle("plugin:hashing:verifyManifest", "local.hash", (context, payload) => this.localHashService.verifyManifest(context.manifest.id, payload));
+    handle("plugin:hashing:exportResults", "local.hash", (context, payload) => this.localHashService.exportResults(context.manifest.id, payload));
+    handle("plugin:hashing:copyResult", "local.hash", (context, payload) => this.localHashService.copyResult(context.manifest.id, payload));
+    handle("plugin:hashing:status", "local.hash", (context, payload) => this.localHashService.status(context.manifest.id, payload.jobId));
+    handle("plugin:hashing:cancel", "local.hash", (context, payload) => this.localHashService.cancel(context.manifest.id, payload.jobId));
   }
 
   async handleRequest(request) {
@@ -173,6 +192,7 @@ class PluginRuntime {
       this.logger?.info("Plugin window minimized to the Core taskbar.", { pluginId: resolved.manifest.id });
     });
     window.on("closed", () => {
+      this.localHashService?.cleanupPlugin(resolved.manifest.id);
       this.contexts.delete(window.webContents.id);
       this.windows.delete(resolved.manifest.id);
       this._emitWindowState();

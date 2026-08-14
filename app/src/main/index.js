@@ -1,13 +1,14 @@
 "use strict";
 
 const path = require("node:path");
-const { app, BrowserWindow, dialog, ipcMain, protocol, shell } = require("electron");
+const { app, BrowserWindow, clipboard, dialog, ipcMain, protocol, shell } = require("electron");
 const { createMainWindow, hardenSession } = require("./bootstrap/createMainWindow");
 const { ConfigStore } = require("./config/configStore");
 const { registerCoreIpc } = require("./ipc/registerCoreIpc");
 const { Logger } = require("./logging/logger");
 const { LogService } = require("./logging/logService");
 const { RemoteFileService } = require("./files/remoteFileService");
+const { LocalHashService } = require("./hashing/localHashService");
 const { PLUGIN_API_VERSION, PluginRegistry } = require("./plugins/pluginRegistry");
 const { PluginCatalogProvider } = require("./plugins/pluginCatalogProvider");
 const { PluginInstaller } = require("./plugins/pluginInstaller");
@@ -59,7 +60,7 @@ async function bootstrap() {
     // musí vždy projít standardním ověřením veřejného certifikátu.
     insecureBaseUrls: ["https://sm.ch-j.de/"]
   });
-  const pluginRegistry = new PluginRegistry(storageRoot, logger);
+  const pluginRegistry = new PluginRegistry(storageRoot, logger, { bundledRoot: path.join(__dirname, "firstPartyPlugins") });
   vaultStore = new VaultStore(storageRoot);
   const profileService = new ProfileService(vaultStore);
   sessionManager = new SessionManager({ profileService, logger });
@@ -90,6 +91,26 @@ async function bootstrap() {
     },
     logger
   });
+  const localHashService = new LocalHashService({
+    selectFilesDialog: async ({ multiple }) => {
+      const result = await dialog.showOpenDialog(mainWindow, { title: multiple ? "Select local files to hash" : "Select a local file to hash", properties: multiple ? ["openFile", "multiSelections"] : ["openFile"] });
+      return { canceled: result.canceled, paths: result.filePaths };
+    },
+    selectDirectoryDialog: async () => {
+      const result = await dialog.showOpenDialog(mainWindow, { title: "Select a local directory", properties: ["openDirectory"] });
+      return { canceled: result.canceled, path: result.filePaths[0] || null };
+    },
+    selectManifestDialog: async () => {
+      const result = await dialog.showOpenDialog(mainWindow, { title: "Select a checksum manifest", properties: ["openFile"], filters: [{ name: "Checksum manifests", extensions: ["sha224", "sha256", "sha384", "sha512", "sha3", "blake3", "md5", "sha1", "sfv", "checksums", "txt"] }] });
+      return { canceled: result.canceled, path: result.filePaths[0] || null };
+    },
+    selectSaveDialog: async ({ suggestedName }) => {
+      const result = await dialog.showSaveDialog(mainWindow, { title: "Save checksum manifest", defaultPath: suggestedName });
+      return { canceled: result.canceled, path: result.filePath || null };
+    },
+    writeClipboard: (text) => clipboard.writeText(text),
+    logger
+  });
   const pluginInstaller = new PluginInstaller({ storageRoot, appVersion: app.getVersion(), pluginApiVersion: PLUGIN_API_VERSION, logger });
   const pluginRuntime = new PluginRuntime({
     BrowserWindow,
@@ -98,6 +119,7 @@ async function bootstrap() {
     keyGeneratorService,
     logService,
     remoteFileService,
+    localHashService,
     getMainWindow: () => mainWindow,
     isVaultUnlocked: () => vaultStore.status().unlocked,
     preload: path.join(__dirname, "..", "preload", "pluginPreload.js"),
@@ -170,6 +192,7 @@ async function bootstrap() {
     app,
     configStore,
     pluginRegistry,
+    pluginApiVersion: PLUGIN_API_VERSION,
     pluginService,
     pluginRuntime,
     profileService,

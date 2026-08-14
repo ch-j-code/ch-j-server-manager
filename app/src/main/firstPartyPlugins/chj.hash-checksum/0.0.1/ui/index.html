@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Hash &amp; Checksum</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><p class="eyebrow">CH-J Server Manager</p><h1>Hash &amp; Checksum</h1></div>
+    <button id="closeButton" class="ghost">Close</button>
+  </header>
+  <main>
+    <div class="privacy"><strong>100% local.</strong> File contents and digests never leave this computer. Files are available only through selections you confirm in the system dialog.</div>
+    <nav class="tabs" aria-label="Hash tools">
+      <button class="tab active" data-tab="calculate">Calculate</button>
+      <button class="tab" data-tab="verify">Verify</button>
+      <button class="tab" data-tab="compare">Compare Files</button>
+      <button class="tab" data-tab="manifests">Manifests</button>
+    </nav>
+
+    <section id="calculate" class="panel tab-panel active">
+      <div class="section-heading"><div><h2>Calculate</h2><p>Hash one file, a batch, or a directory. Directory symlinks are skipped.</p></div></div>
+      <div class="picker-row">
+        <select id="calculateMode" aria-label="Selection type"><option value="file">File</option><option value="multiple">Multiple Files</option><option value="directory">Directory</option></select>
+        <button id="calculatePick">Choose…</button><span id="calculateSelection" class="selection">Nothing selected</span>
+        <label id="recursiveLabel" class="check hidden"><input id="recursive" type="checkbox"> Include subdirectories</label>
+      </div>
+      <div class="algorithm-toolbar"><h3>Algorithms</h3><div><button id="recommended" class="small ghost">Recommended</button><button id="selectAll" class="small ghost">Select all</button><button id="selectNone" class="small ghost">Clear</button></div></div>
+      <p class="warning">MD5 and SHA-1 are cryptographically broken and are included only for compatibility. Fast hashes, CRC, and Adler are not suitable for security verification. SipHash and HighwayHash use an all-zero key when their key field is left blank. Selecting all algorithms is CPU intensive.</p>
+      <div id="algorithmList" class="algorithms"></div>
+      <div class="actions"><label>Output <select id="output"><option value="hex-lower">HEX lowercase</option><option value="hex-upper">HEX uppercase</option><option value="base64">Base64</option></select></label><button id="calculateStart" class="primary">Calculate</button></div>
+    </section>
+
+    <section id="verify" class="panel tab-panel">
+      <h2>Verify</h2><p>Compare a local file with an expected digest. Hex comparison ignores case and surrounding whitespace.</p>
+      <div class="picker-row"><button id="verifyPick">Choose file…</button><span id="verifySelection" class="selection">Nothing selected</span></div>
+      <div class="form-grid"><label>Algorithm<select id="verifyAlgorithm"></select></label><label>Expected digest<input id="expected" class="mono" autocomplete="off" spellcheck="false"></label></div>
+      <div id="detection" class="hint"></div><div class="actions"><button id="verifyStart" class="primary">Verify</button></div>
+    </section>
+
+    <section id="compare" class="panel tab-panel">
+      <h2>Compare Files</h2><p>This compares calculated digests, not every byte directly.</p>
+      <div class="compare-grid"><div><button id="comparePickA">Choose File A…</button><span id="compareA" class="selection block">Nothing selected</span></div><div><button id="comparePickB">Choose File B…</button><span id="compareB" class="selection block">Nothing selected</span></div></div>
+      <label>Algorithms <span class="hint">Select one or more (Ctrl/Cmd-click).</span><select id="compareAlgorithm" multiple size="8"></select></label><div class="actions"><button id="compareStart" class="primary">Compare digests</button></div>
+    </section>
+
+    <section id="manifests" class="panel tab-panel">
+      <h2>Checksum manifests</h2>
+      <div class="manifest-grid">
+        <article><h3>Generate</h3><p>GNU, BSD, or SFV with portable relative paths.</p><select id="manifestSourceMode"><option value="files">Files</option><option value="directory">Directory</option></select><button id="manifestSourcePick">Choose source…</button><span id="manifestSource" class="selection block">Nothing selected</span><label>Algorithm<select id="manifestAlgorithm"></select></label><label>Format<select id="manifestFormat"><option value="gnu">GNU</option><option value="bsd">BSD</option><option value="sfv">SFV (CRC32 only)</option></select></label><label class="check"><input id="manifestRecursive" type="checkbox"> Include subdirectories</label><button id="manifestGenerate" class="primary">Generate manifest…</button></article>
+        <article><h3>Verify</h3><p>Absolute paths, traversal, UNC/drive paths, and symlink escapes are rejected.</p><button id="manifestPick">Choose manifest…</button><span id="manifestSelection" class="selection block">Nothing selected</span><button id="manifestRootPick">Choose root directory…</button><span id="manifestRoot" class="selection block">Nothing selected</span><label>Algorithm override (optional)<select id="manifestVerifyAlgorithm"><option value="">Auto-detect</option></select></label><button id="manifestVerify" class="primary">Verify manifest</button></article>
+      </div>
+    </section>
+
+    <section class="panel job-panel" aria-live="polite">
+      <div class="section-heading"><div><h2>Job</h2><p id="jobState">No job running</p></div><button id="cancel" class="danger hidden">Cancel</button></div>
+      <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+      <div id="progressStats" class="stats"></div><div id="summary" class="summary"></div>
+      <div class="result-actions"><button id="copyAll" class="ghost hidden">Copy all</button><button id="exportResults" class="ghost hidden">Export results…</button></div>
+      <div class="table-wrap"><table><thead><tr><th>File</th><th>Size</th><th>Algorithm</th><th>Digest</th><th>Status</th><th></th></tr></thead><tbody id="results"></tbody></table></div>
+    </section>
+  </main>
+  <script src="index.js"></script>
+</body>
+</html>

@@ -43,5 +43,27 @@ contextBridge.exposeInMainWorld("chjPlugin", Object.freeze({
     download: (sessionId, path) => ipcRenderer.invoke("plugin:files:download", { sessionId, path }),
     downloadMany: (sessionId, paths) => ipcRenderer.invoke("plugin:files:downloadMany", { sessionId, paths }),
     downloadArchive: (sessionId, paths, format) => ipcRenderer.invoke("plugin:files:downloadArchive", { sessionId, paths, format })
+  }),
+  hashing: Object.freeze({
+    getAlgorithms: () => ipcRenderer.invoke("plugin:hashing:algorithms"),
+    selectFiles: (multiple = false) => ipcRenderer.invoke("plugin:hashing:selectFiles", { multiple }),
+    selectDirectory: () => ipcRenderer.invoke("plugin:hashing:selectDirectory"),
+    selectManifest: () => ipcRenderer.invoke("plugin:hashing:selectManifest"),
+    selectManifestDestination: (suggestedName) => ipcRenderer.invoke("plugin:hashing:selectManifestDestination", { suggestedName }),
+    start: (payload) => ipcRenderer.invoke("plugin:hashing:start", payload),
+    verify: (payload) => ipcRenderer.invoke("plugin:hashing:verify", payload),
+    compare: (payload) => ipcRenderer.invoke("plugin:hashing:compare", payload),
+    generateManifest: (payload) => ipcRenderer.invoke("plugin:hashing:generateManifest", payload),
+    verifyManifest: (payload) => ipcRenderer.invoke("plugin:hashing:verifyManifest", payload),
+    exportResults: (payload) => ipcRenderer.invoke("plugin:hashing:exportResults", payload),
+    copyResult: (payload) => ipcRenderer.invoke("plugin:hashing:copyResult", payload),
+    status: (jobId) => ipcRenderer.invoke("plugin:hashing:status", { jobId }),
+    cancel: (jobId) => ipcRenderer.invoke("plugin:hashing:cancel", { jobId }),
+    onProgress: (callback) => {
+      if (typeof callback !== "function") throw new TypeError("Progress callback must be a function.");
+      const listener = (_event, job) => callback(job);
+      ipcRenderer.on("plugin:hashing:progress", listener);
+      return () => ipcRenderer.removeListener("plugin:hashing:progress", listener);
+    }
   })
 }));

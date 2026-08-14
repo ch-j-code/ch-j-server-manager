@@ -32,9 +32,18 @@ Alpha distribution notes:
 - file browsing, editing, upload, download, deletion, and ZIP/TAR/TAR.GZ export through a restricted SFTP interface;
 - Czech, German, and English user interfaces;
 - installable first-party plugins for System Monitor, Key Generator, Log Viewer, Users, File Manager, and NGINX Manager;
+- a bundled local Hash & Checksum plugin for calculation, verification, comparison, and checksum manifests;
 - sandboxed plugin windows with capability-based access to Core services;
 - alpha, beta, and stable update channels;
 - application updates protected by size checks, SHA-512, and mandatory detached OpenPGP signatures.
+
+## Hash & Checksum
+
+The bundled first-party **Hash & Checksum** plugin calculates and verifies hashes for individual files, batches, and recursive directories. It also compares files by digest and reads or creates GNU, BSD, and SFV checksum manifests.
+
+All processing is local. File contents and calculated digests are not sent to a server. Core opens the native file picker and gives the sandboxed plugin only opaque, plugin-owned selection tokens; the renderer receives neither unrestricted filesystem access nor raw local paths. Hashing runs in worker threads and streams files instead of loading them entirely into memory.
+
+The plugin supports 49 algorithms across SHA-2, SHA-3, SHAKE, BLAKE2, BLAKE3, KangarooTwelve, RIPEMD-160, Whirlpool, Tiger, Tiger2, xxHash, MurmurHash3, CityHash, FarmHash, HighwayHash, SipHash-2-4, FNV, CRC, and Adler-32 families. MD5 and SHA-1 are available only for legacy compatibility. Fast hashes and checksums are not cryptographic integrity proofs.
 
 ## Security
 
@@ -71,6 +80,12 @@ The following features are planned but not yet available:
 - Safe Mode and additional tools.
 
 This list is not exhaustive. Behavior and data formats may still change during the alpha phase.
+
+## Repository boundary
+
+The complete desktop application source tree lives in `app/`. Dependency installation, tests, development startup, and supported platform builds run from that directory without requiring source files or tooling from sibling projects.
+
+An update service, independently distributed plugin packages, and release tooling may integrate with the application through public APIs, package formats, or build artifacts, but they are not application runtime, test, or build dependencies. Bundled first-party plugins under `app/src/main/firstPartyPlugins/` and the internal Core plugin framework under `app/src/main/plugins/` are part of the application itself.
 
 ## Development
 

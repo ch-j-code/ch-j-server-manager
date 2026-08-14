@@ -54,6 +54,18 @@ for (const [relative, metadata] of Object.entries(lock.packages || {})) {
   if (!texts.length) throw new Error(`No distributable license text found for ${key}.`);
   packages.set(key, { key, license: declaredLicense(manifest.license || metadata.license), texts });
 }
+const bundledTigerLicense = path.join(projectRoot, "src", "main", "hashing", "vendor", "fbTiger", "LICENSE.txt");
+packages.set("fb-tiger-hash@1.0.0 (bundled source)", {
+  key: "fb-tiger-hash@1.0.0 (bundled source)",
+  license: "MIT",
+  texts: [{ source: "src/main/hashing/vendor/fbTiger/LICENSE.txt", text: fs.readFileSync(bundledTigerLicense, "utf8").trim() }]
+});
+const bundledCityHashLicense = path.join(projectRoot, "src", "main", "hashing", "vendor", "cityHash", "LICENSE.txt");
+packages.set("google-cityhash (ported source)", {
+  key: "google-cityhash (ported source)",
+  license: "MIT",
+  texts: [{ source: "src/main/hashing/vendor/cityHash/LICENSE.txt", text: fs.readFileSync(bundledCityHashLicense, "utf8").trim() }]
+});
 
 const separator = "=".repeat(78);
 const sections = [...packages.values()]
@@ -75,7 +87,11 @@ fs.writeFileSync(outputPath, `${header}\n${sections.join("\n\n")}\n`, "utf8");
 const bundleDocuments = [
   { name: "THIRD_PARTY_NOTICES.txt", path: outputPath, description: "Production Node.js dependency licenses" },
   { name: "ELECTRON_LICENSE.txt", path: path.join(projectRoot, "node_modules", "electron", "dist", "LICENSE"), description: "Electron license" },
-  { name: "CHROMIUM_LICENSES.html", path: path.join(projectRoot, "node_modules", "electron", "dist", "LICENSES.chromium.html"), description: "Chromium and embedded component licenses" }
+  { name: "CHROMIUM_LICENSES.html", path: path.join(projectRoot, "node_modules", "electron", "dist", "LICENSES.chromium.html"), description: "Chromium and embedded component licenses" },
+  { name: "MONACO_LICENSE.txt", path: path.join(projectRoot, "node_modules", "monaco-editor", "LICENSE"), description: "Monaco Editor license" },
+  { name: "MONACO_THIRD_PARTY_NOTICES.txt", path: path.join(projectRoot, "node_modules", "monaco-editor", "ThirdPartyNotices.txt"), description: "Monaco Editor third-party notices" },
+  { name: "GOOGLE_CITYHASH_LICENSE.txt", path: bundledCityHashLicense, description: "Ported CityHash implementation license" },
+  { name: "FB_TIGER_HASH_LICENSE.txt", path: bundledTigerLicense, description: "Bundled Tiger/Tiger2 implementation license" }
 ];
 for (const document of bundleDocuments) {
   if (!fs.statSync(document.path, { throwIfNoEntry: false })?.isFile()) throw new Error(`Missing third-party license document: ${document.path}`);
@@ -86,7 +102,7 @@ const bundleReadme = [
   "CH-J Server Manager — Complete Third-Party License Package",
   "",
   "This archive contains the license texts and notices for third-party software",
-  "distributed by CH-J Server Manager Core.",
+  "distributed by CH-J Server Manager Core and its bundled source components.",
   "The project itself is licensed separately under Apache License 2.0.",
   "",
   "Contents:",

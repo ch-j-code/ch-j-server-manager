@@ -67,7 +67,7 @@ function registerCoreIpc(options) {
     platform: process.platform,
     arch: process.arch,
     coreApi: "1.0.0",
-    pluginApi: "1.0.0",
+    pluginApi: options.pluginApiVersion || require("../plugins/pluginRegistry").PLUGIN_API_VERSION,
     dataSchema: 1,
     license: "Apache-2.0",
     copyright: "Copyright 2026 Josef Chudy"

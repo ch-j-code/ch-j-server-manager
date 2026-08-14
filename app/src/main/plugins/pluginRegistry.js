@@ -5,7 +5,7 @@ const path = require("node:path");
 const { compareVersions, parseVersion } = require("../../shared/version");
 
 const PLUGIN_ID_PATTERN = /^[a-z0-9][a-z0-9.-]{2,63}$/;
-const PLUGIN_API_VERSION = "1.1.0";
+const PLUGIN_API_VERSION = "1.2.0";
 const ALLOWED_PERMISSIONS = new Set([
   "session.read",
   "system.metrics.read",
@@ -21,7 +21,8 @@ const ALLOWED_PERMISSIONS = new Set([
   "mail.read",
   "mail.manage",
   "logs.read",
-  "remote.exec"
+  "remote.exec",
+  "local.hash"
 ]);
 
 function validateManifest(input) {
@@ -63,17 +64,23 @@ function supportsPluginApi(range, supportedVersion = PLUGIN_API_VERSION) {
 }
 
 class PluginRegistry {
-  constructor(rootDir, logger) {
+  constructor(rootDir, logger, options = {}) {
     this.rootDir = path.join(rootDir, "plugins");
+    this.bundledRoot = options.bundledRoot || null;
     this.logger = logger;
+    this.locations = new Map();
   }
 
   listInstalled() {
     fs.mkdirSync(this.rootDir, { recursive: true });
+    this.locations.clear();
     const plugins = [];
-    for (const idEntry of fs.readdirSync(this.rootDir, { withFileTypes: true })) {
+    const roots = [{ root: this.rootDir, bundled: false }];
+    if (this.bundledRoot && fs.statSync(this.bundledRoot, { throwIfNoEntry: false })?.isDirectory()) roots.push({ root: this.bundledRoot, bundled: true });
+    const candidatesById = new Map();
+    for (const source of roots) for (const idEntry of fs.readdirSync(source.root, { withFileTypes: true })) {
       if (!idEntry.isDirectory() || !PLUGIN_ID_PATTERN.test(idEntry.name)) continue;
-      const idRoot = path.join(this.rootDir, idEntry.name);
+      const idRoot = path.join(source.root, idEntry.name);
       const candidates = [];
       for (const versionEntry of fs.readdirSync(idRoot, { withFileTypes: true })) {
         if (!versionEntry.isDirectory() || versionEntry.name.startsWith(".")) continue;
@@ -89,10 +96,12 @@ class PluginRegistry {
           try { installation = JSON.parse(fs.readFileSync(path.join(idRoot, versionEntry.name, ".installation.json"), "utf8")); } catch {}
           candidates.push({
             ...manifest,
+            bundled: source.bundled,
             installedReleaseId: typeof installation.releaseId === "string" ? installation.releaseId : null,
             installedSha512: /^[a-f0-9]{128}$/i.test(String(installation.sha512 || "")) ? String(installation.sha512).toLowerCase() : null,
             installedAt: typeof installation.installedAt === "string" ? installation.installedAt : null,
-            installedPublishedAt: typeof installation.publishedAt === "string" ? installation.publishedAt : null
+            installedPublishedAt: typeof installation.publishedAt === "string" ? installation.publishedAt : null,
+            _root: path.join(idRoot, versionEntry.name)
           });
         } catch (error) {
           this.logger?.warn("Ignoring invalid installed plugin.", {
@@ -102,8 +111,16 @@ class PluginRegistry {
           });
         }
       }
-      candidates.sort((left, right) => compareVersions(right.version, left.version));
-      if (candidates[0]) plugins.push(candidates[0]);
+      if (!candidatesById.has(idEntry.name)) candidatesById.set(idEntry.name, []);
+      candidatesById.get(idEntry.name).push(...candidates);
+    }
+    for (const candidates of candidatesById.values()) {
+      candidates.sort((left, right) => compareVersions(right.version, left.version) || Number(left.bundled) - Number(right.bundled));
+      if (!candidates[0]) continue;
+      const selected = candidates[0];
+      this.locations.set(`${selected.id}@${selected.version}`, selected._root);
+      const { _root, ...publicManifest } = selected;
+      plugins.push(publicManifest);
     }
     return plugins.sort((left, right) => left.name.localeCompare(right.name));
   }
@@ -117,7 +134,7 @@ class PluginRegistry {
   resolveEntry(pluginId) {
     const manifest = this.getInstalled(pluginId);
     if (!manifest) throw new Error("Plugin is not installed.");
-    const root = path.join(this.rootDir, manifest.id, manifest.version);
+    const root = this.locations.get(`${manifest.id}@${manifest.version}`) || path.join(this.rootDir, manifest.id, manifest.version);
     return { manifest, root, entryPath: path.join(root, ...manifest.entry.split("/")) };
   }
 
