@@ -29,6 +29,7 @@ class PluginRuntime {
     this.logService = options.logService;
     this.remoteFileService = options.remoteFileService;
     this.localHashService = options.localHashService;
+    this.getLanguage = options.getLanguage || (() => "en");
     this.getMainWindow = options.getMainWindow;
     this.isVaultUnlocked = options.isVaultUnlocked;
     this.preload = options.preload;
@@ -52,10 +53,17 @@ class PluginRuntime {
           error.code = "PLUGIN_PERMISSION_DENIED";
           throw error;
         }
-        return action(context, payload);
+        try {
+          return await action(context, payload);
+        } catch (error) {
+          // Electron serializes the message, but drops custom error properties.
+          if (error?.code?.startsWith("HASH_") && !error.message.startsWith(`${error.code}:`)) error.message = `${error.code}: ${error.message}`;
+          throw error;
+        }
       });
     };
     handle("plugin:getInfo", null, (context) => context.manifest);
+    handle("plugin:ui:getLanguage", null, () => this.getLanguage());
     handle("plugin:close", null, (context) => { context.window.close(); return { ok: true }; });
     handle("plugin:sessions:list", "session.read", () => this.sessionManager.list());
     handle("plugin:system:metrics", "system.metrics.read", (_context, payload) => this.sessionManager.readSystemMetrics(payload.sessionId));
@@ -96,6 +104,12 @@ class PluginRuntime {
     handle("plugin:hashing:copyResult", "local.hash", (context, payload) => this.localHashService.copyResult(context.manifest.id, payload));
     handle("plugin:hashing:status", "local.hash", (context, payload) => this.localHashService.status(context.manifest.id, payload.jobId));
     handle("plugin:hashing:cancel", "local.hash", (context, payload) => this.localHashService.cancel(context.manifest.id, payload.jobId));
+  }
+
+  notifyLanguageChanged(language) {
+    for (const window of this.windows.values()) {
+      if (!window.isDestroyed()) window.webContents.send("plugin:ui:languageChanged", language);
+    }
   }
 
   async handleRequest(request) {
@@ -172,7 +186,8 @@ class PluginRuntime {
       if (!url.startsWith(`chj-plugin://${resolved.manifest.id}/`)) event.preventDefault();
     });
     const context = { manifest: resolved.manifest, window, minimized: false };
-    this.contexts.set(window.webContents.id, context);
+    const webContentsId = window.webContents.id;
+    this.contexts.set(webContentsId, context);
     this.windows.set(resolved.manifest.id, window);
     window.once("ready-to-show", () => {
       window.show();
@@ -193,7 +208,7 @@ class PluginRuntime {
     });
     window.on("closed", () => {
       this.localHashService?.cleanupPlugin(resolved.manifest.id);
-      this.contexts.delete(window.webContents.id);
+      this.contexts.delete(webContentsId);
       this.windows.delete(resolved.manifest.id);
       this._emitWindowState();
     });

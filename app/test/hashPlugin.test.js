@@ -52,3 +52,29 @@ test("hash IPC enforces local.hash, scopes calls and progress to the owning plug
   ownerWindow.webContents = { id: 10, send: () => {} }; runtime.contexts.set(10, { manifest: { id: "owner", permissions: ["local.hash"] }, window: ownerWindow });
   hashing.cleanupPlugin("owner"); assert.ok(calls.some((call) => call[0] === "cleanup" && call[1] === "owner"));
 });
+
+test("plugin language IPC uses the app language and broadcasts updates to open windows", async () => {
+  const handlers = new Map();
+  const events = [];
+  const runtime = new PluginRuntime({ BrowserWindow: class {}, registry: {}, getLanguage: () => "cs", isVaultUnlocked: () => true });
+  runtime.registerIpc({ handle: (channel, handler) => handlers.set(channel, handler) });
+  const window = { isDestroyed: () => false, webContents: { send: (channel, payload) => events.push([channel, payload]) } };
+  runtime.contexts.set(21, { manifest: { id: "chj.hash-checksum", permissions: ["local.hash"] }, window });
+  runtime.windows.set("chj.hash-checksum", window);
+  runtime.windows.set("closed", { isDestroyed: () => true });
+  assert.equal(await handlers.get("plugin:ui:getLanguage")({ sender: { id: 21 } }), "cs");
+  await assert.rejects(() => handlers.get("plugin:ui:getLanguage")({ sender: { id: 999 } }));
+  runtime.notifyLanguageChanged("de");
+  assert.deepEqual(events, [["plugin:ui:languageChanged", "de"]]);
+});
+
+test("hash errors retain their code in the IPC message for localized renderer errors", async () => {
+  const handlers = new Map();
+  const runtime = new PluginRuntime({ BrowserWindow: class {}, registry: {}, isVaultUnlocked: () => true, localHashService: {
+    on: () => {},
+    start: () => { throw Object.assign(new Error("Invalid key"), { code: "HASH_INVALID_KEY" }); }
+  } });
+  runtime.registerIpc({ handle: (channel, handler) => handlers.set(channel, handler) });
+  runtime.contexts.set(22, { manifest: { id: "chj.hash-checksum", permissions: ["local.hash"] }, window: { isDestroyed: () => false } });
+  await assert.rejects(() => handlers.get("plugin:hashing:start")({ sender: { id: 22 } }), { code: "HASH_INVALID_KEY", message: "HASH_INVALID_KEY: Invalid key" });
+});

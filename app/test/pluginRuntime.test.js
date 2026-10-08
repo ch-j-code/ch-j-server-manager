@@ -144,3 +144,23 @@ test("plugin runtime separates NGINX read and manage capabilities", async () => 
   assert.deepEqual(await handlers.get("plugin:nginx:saveConfig")(event, { sessionId: "nginx-1", path: "/etc/nginx/nginx.conf" }), { path: "/etc/nginx/nginx.conf" });
   assert.deepEqual(calls, [["inspect", "nginx-1"], ["save", "nginx-1", "/etc/nginx/nginx.conf"]]);
 });
+
+test("closing a destroyed plugin window releases its context without reading webContents", () => {
+  let pluginWindow;
+  const cleanup = [];
+  const manifest = { id: "chj.hash-checksum", name: "Hash & Checksum", version: "0.0.1", entry: "ui/index.html", permissions: ["local.hash"] };
+  const runtime = new PluginRuntime({
+    BrowserWindow: class extends FakeWindow { constructor() { super(); pluginWindow = this; } },
+    registry: { resolveEntry: () => ({ manifest, root: "/plugin" }) },
+    localHashService: { on: () => {}, cleanupPlugin: (id) => cleanup.push(id) },
+    isVaultUnlocked: () => true
+  });
+  runtime.open(manifest.id);
+  const senderId = pluginWindow.webContents.id;
+  Object.defineProperty(pluginWindow, "webContents", { get() { throw new Error("Object has been destroyed"); } });
+  pluginWindow.destroyed = true;
+  assert.doesNotThrow(() => pluginWindow.emit("closed"));
+  assert.equal(runtime.contexts.has(senderId), false);
+  assert.equal(runtime.windows.has(manifest.id), false);
+  assert.deepEqual(cleanup, [manifest.id]);
+});

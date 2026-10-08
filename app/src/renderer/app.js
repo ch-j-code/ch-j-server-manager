@@ -4,6 +4,7 @@ const api = window.chjCore;
 const i18n = window.chjI18n;
 const t = (key, values) => i18n.t(key, values);
 const TERMINAL_SESSION_ID = "terminal-main";
+const HASH_TOOL_ID = "chj.hash-checksum";
 if (api?.platform) document.body.classList.add(`platform-${api.platform}`);
 const state = {
   info: null,
@@ -174,16 +175,17 @@ function renderReleaseCatalog(updateState) {
 }
 
 function renderPlugins() {
-  elements.pluginCountValue.textContent = String(state.plugins.length);
+  const plugins = state.plugins.filter((plugin) => plugin.id !== HASH_TOOL_ID);
+  elements.pluginCountValue.textContent = String(plugins.length);
   elements.pluginRows.replaceChildren();
-  if (state.plugins.length === 0) {
+  if (plugins.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
     const strong = document.createElement("strong"); strong.textContent = t("plugins.none");
     const span = document.createElement("span"); span.textContent = t("plugins.first");
     empty.append(strong, span); elements.pluginRows.append(empty); renderPluginCatalog(); renderPluginTaskbar(); return;
   }
-  for (const plugin of state.plugins) {
+  for (const plugin of plugins) {
     const row = document.createElement("div"); row.className = "plugin-row plugin-table-row";
     const name = document.createElement("strong"); name.textContent = plugin.name;
     const version = document.createElement("span"); version.textContent = plugin.version;
@@ -241,7 +243,7 @@ function renderPluginTaskbar(windows = state.pluginWindows) {
 
 function renderPluginCatalog() {
   if (!elements.pluginCatalogRows) return;
-  const catalog = state.pluginState?.catalog || [];
+  const catalog = (state.pluginState?.catalog || []).filter((plugin) => plugin.id !== HASH_TOOL_ID);
   elements.pluginCatalogSource.textContent = state.pluginState?.sourceBaseUrl || "";
   elements.pluginCatalogRows.replaceChildren();
   if (!catalog.length) {
@@ -536,6 +538,10 @@ async function initialize() {
 }
 
 document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => showView(button.dataset.view)));
+$("#hashToolButton").addEventListener("click", async () => {
+  try { await api.openPlugin(HASH_TOOL_ID); }
+  catch (error) { window.alert(errorText(error)); }
+});
 elements.vaultForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const password = elements.vaultPassword.value;

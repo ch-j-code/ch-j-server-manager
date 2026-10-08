@@ -1,7 +1,7 @@
 {
   "name": "ch-j-server-manager",
   "version": "0.0.1",
-  "description": "CH-J Server Manager Core",
+  "description": "Desktop SSH and SFTP client, Linux server manager, and local hash calculator with 49 checksum algorithms.",
   "homepage": "https://www.sm.ch-j.de",
   "license": "Apache-2.0",
   "author": "Josef Chudy <josef@ch-j.de>",
@@ -140,5 +140,22 @@
       "maintainer": "Josef Chudy <josef@ch-j.de>",
       "syncDesktopName": true
     }
-  }
+  },
+  "keywords": [
+    "ssh",
+    "sftp",
+    "server-management",
+    "hash-calculator",
+    "checksum",
+    "file-integrity",
+    "sha256",
+    "sha512",
+    "sha3",
+    "blake3",
+    "xxhash",
+    "electron",
+    "linux",
+    "macos",
+    "windows"
+  ]
 }

@@ -166,3 +166,31 @@ test("cancel stops an active worker and cleanup removes plugin authorization", a
   other.cleanupPlugin("p"); await new Promise((resolve) => setTimeout(resolve, 20));
   assert.throws(() => other.status("p", active.jobId), { code: "HASH_INVALID_JOB" });
 });
+
+test("all 49 algorithms export uppercase HEX and Base64 without altering digest bytes", async (t) => {
+  const { paths } = fixture(t, { file: "abc" });
+  const service = serviceFor([paths.file], 7);
+  const selection = await service.selectFiles("p");
+  for (const output of ["hex-upper", "base64"]) {
+    const job = await completed(service, "p", service.start("p", { selectionId: selection.selectionId, algorithms: requests(), output }));
+    assert.equal(job.results[0].hashes.length, 49);
+    for (const hash of job.results[0].hashes) {
+      const reference = vectors.vectors.abc[hash.id];
+      assert.equal(hash.hex, reference, hash.id);
+      assert.equal(hash.value, output === "base64" ? Buffer.from(reference, "hex").toString("base64") : reference.toUpperCase(), hash.id);
+    }
+  }
+});
+
+test("comparison distinguishes matching and different files using all 49 algorithms", async (t) => {
+  const { paths } = fixture(t, { a: "abc", b: "abc", c: "different" });
+  const service = serviceFor([paths.a], 7);
+  const left = await service.selectFiles("p");
+  for (const [file, identical] of [[paths.b, true], [paths.c, false]]) {
+    service.selectFilesDialog = async () => ({ canceled: false, paths: [file] });
+    const right = await service.selectFiles("p");
+    const job = await completed(service, "p", service.compare("p", { leftSelectionId: left.selectionId, rightSelectionId: right.selectionId, algorithms: requests() }));
+    assert.equal(job.comparison.identical, identical);
+    assert.equal(job.results.every((result) => result.status === "COMPLETED" && result.hashes.length === 49), true);
+  }
+});

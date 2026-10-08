@@ -1,6 +1,6 @@
 # CH-J Server Manager
 
-CH-J Server Manager is a desktop application for securely administering Linux servers over SSH. It combines server profiles, an interactive terminal, file management, monitoring, log inspection, user administration, and NGINX management in one Electron application.
+CH-J Server Manager is a desktop SSH and SFTP client for Linux server administration and a local file hash calculator and checksum verification tool for Windows, macOS, and Linux. It combines server profiles, an interactive terminal, file management, monitoring, log inspection, user administration, NGINX management, and 49 hashing algorithms in one Electron application.
 
 The project is currently in **alpha**. It is suitable for testing, but some planned features and production distribution requirements are not complete yet. The internal name "Core" refers to the current application architecture; the product name remains CH-J Server Manager.
 
@@ -32,14 +32,87 @@ Alpha distribution notes:
 - file browsing, editing, upload, download, deletion, and ZIP/TAR/TAR.GZ export through a restricted SFTP interface;
 - Czech, German, and English user interfaces;
 - installable first-party plugins for System Monitor, Key Generator, Log Viewer, Users, File Manager, and NGINX Manager;
-- a bundled local Hash & Checksum plugin for calculation, verification, comparison, and checksum manifests;
+- a bundled local Hash & Checksum tool in the sidebar for calculation, verification, comparison, and checksum manifests;
 - sandboxed plugin windows with capability-based access to Core services;
 - alpha, beta, and stable update channels;
 - application updates protected by size checks, SHA-512, and mandatory detached OpenPGP signatures.
 
 ## Hash & Checksum
 
-The bundled first-party **Hash & Checksum** plugin calculates and verifies hashes for individual files, batches, and recursive directories. It also compares files by digest and reads or creates GNU, BSD, and SFV checksum manifests.
+Calculate file hashes, verify checksums, and compare local files with 49 algorithms, including SHA-256, SHA-512, SHA-3, BLAKE3, and xxHash. The built-in hashing tool supports HEX and Base64 output and GNU, BSD, and SFV checksum manifests.
+
+Open **Hash & Checksum** from the left sidebar, directly below **Plugins**, after unlocking the vault. The tool is bundled with the application, opens in its own window, and does not appear in the installed-plugin list.
+
+The interface follows the application's saved language setting: **Czech, German, or English**. Saving a language change updates an already open Hash window, including controls, progress, result statuses, errors, and native file-dialog labels, while preserving selected files, algorithms, parameters, and results.
+
+Available functions:
+
+- **Calculate:** hash a single file, multiple files, or a directory, optionally including subdirectories. Use the recommended selection (SHA-256, SHA-512, and BLAKE3), select individual algorithms, or select all 49 at once. Directory symlinks are skipped.
+- **Output and parameters:** display digests as lowercase HEX, uppercase HEX, or Base64. Configure output length for SHAKE and KangarooTwelve, seeds for xxHash and MurmurHash3, and hexadecimal keys for SipHash and HighwayHash. An empty key field uses an all-zero key.
+- **Verify:** compare a file with an expected HEX or Base64 digest using a selected fixed-length algorithm. HEX comparison ignores letter case and surrounding whitespace. Suggested algorithms based on HEX length are hints, not definitive identification.
+- **Compare Files:** compare the calculated digests of two files using one or more fixed-length algorithms.
+- **Manifests:** generate and verify GNU, BSD, and SFV checksum lists with relative paths. Generation requires a fixed-length algorithm without a key or seed; SFV requires CRC32. Verification supports automatic algorithm detection or a manual override when the digest length is ambiguous.
+- **Progress and results:** view processed bytes, percentage, throughput, elapsed time, estimated remaining time, and per-file statuses; cancel a running job; copy an individual digest or all results; export results to a text file.
+
+### Supported algorithms
+
+The complete list of **49 supported algorithms** is shown below. Algorithm IDs match the result table and exported results.
+
+| Algorithm | ID | Output size (bits) |
+| --- | --- | --- |
+| SHA-224 | `sha224` | 224 |
+| SHA-256 | `sha256` | 256 |
+| SHA-384 | `sha384` | 384 |
+| SHA-512 | `sha512` | 512 |
+| SHA-512/224 | `sha512-224` | 224 |
+| SHA-512/256 | `sha512-256` | 256 |
+| SHA3-224 | `sha3-224` | 224 |
+| SHA3-256 | `sha3-256` | 256 |
+| SHA3-384 | `sha3-384` | 384 |
+| SHA3-512 | `sha3-512` | 512 |
+| SHAKE128 | `shake128` | Variable (default 256) |
+| SHAKE256 | `shake256` | Variable (default 512) |
+| BLAKE2b-512 | `blake2b-512` | 512 |
+| BLAKE2s-256 | `blake2s-256` | 256 |
+| BLAKE3 | `blake3` | 256 |
+| KangarooTwelve | `kangaroo-twelve` | Variable (default 256) |
+| RIPEMD-160 | `ripemd160` | 160 |
+| Whirlpool | `whirlpool` | 512 |
+| Tiger | `tiger` | 192 |
+| Tiger2 | `tiger2` | 192 |
+| MD5 | `md5` | 128 |
+| SHA-1 | `sha1` | 160 |
+| XXH32 | `xxh32` | 32 |
+| XXH64 | `xxh64` | 64 |
+| XXH3-64 | `xxh3-64` | 64 |
+| XXH3-128 | `xxh3-128` | 128 |
+| MurmurHash3 x86 32 | `murmur3-x86-32` | 32 |
+| MurmurHash3 x86 128 | `murmur3-x86-128` | 128 |
+| MurmurHash3 x64 128 | `murmur3-x64-128` | 128 |
+| CityHash32 | `cityhash32` | 32 |
+| CityHash64 | `cityhash64` | 64 |
+| CityHash128 | `cityhash128` | 128 |
+| FarmHash32 | `farmhash32` | 32 |
+| FarmHash64 | `farmhash64` | 64 |
+| FarmHash128 | `farmhash128` | 128 |
+| HighwayHash64 | `highwayhash64` | 64 |
+| HighwayHash128 | `highwayhash128` | 128 |
+| HighwayHash256 | `highwayhash256` | 256 |
+| SipHash-2-4 | `siphash-2-4` | 64 |
+| FNV-1 32 | `fnv1-32` | 32 |
+| FNV-1 64 | `fnv1-64` | 64 |
+| FNV-1a 32 | `fnv1a-32` | 32 |
+| FNV-1a 64 | `fnv1a-64` | 64 |
+| CRC-16/CCITT-FALSE | `crc16-ccitt-false` | 16 |
+| CRC-32/ISO-HDLC | `crc32` | 32 |
+| CRC-32C/Castagnoli | `crc32c` | 32 |
+| CRC-64/ECMA-182 | `crc64-ecma` | 64 |
+| CRC-64/XZ | `crc64-xz` | 64 |
+| Adler-32 | `adler32` | 32 |
+
+SHAKE128, SHAKE256, and KangarooTwelve allow an output length of **16–1024 bytes**. Their defaults are 32, 64, and 32 bytes respectively. BLAKE3 currently produces a fixed 256-bit digest.
+
+MD5 and SHA-1 are included only for legacy compatibility. xxHash, MurmurHash3, CityHash, FarmHash, HighwayHash, SipHash, FNV, CRC, and Adler-32 are not offered as cryptographic integrity proofs.
 
 All processing is local. File contents and calculated digests are not sent to a server. Core opens the native file picker and gives the sandboxed plugin only opaque, plugin-owned selection tokens; the renderer receives neither unrestricted filesystem access nor raw local paths. Hashing runs in worker threads and streams files instead of loading them entirely into memory.
 
@@ -114,6 +187,10 @@ npm run build:linux
 ```
 
 The configured outputs are a macOS DMG (`arm64`), a Windows NSIS installer (`x64`), and a Debian package (`x64`). The macOS build also creates an application ZIP for initial website distribution. Generated packages are written to `app/dist/` and are not committed.
+
+## Topics
+
+[#ssh](https://github.com/topics/ssh) · [#sftp](https://github.com/topics/sftp) · [#server-management](https://github.com/topics/server-management) · [#hash-calculator](https://github.com/topics/hash-calculator) · [#checksum](https://github.com/topics/checksum) · [#file-integrity](https://github.com/topics/file-integrity) · [#sha256](https://github.com/topics/sha256) · [#sha512](https://github.com/topics/sha512) · [#sha3](https://github.com/topics/sha3) · [#blake3](https://github.com/topics/blake3) · [#xxhash](https://github.com/topics/xxhash) · [#electron](https://github.com/topics/electron) · [#linux](https://github.com/topics/linux) · [#macos](https://github.com/topics/macos) · [#windows](https://github.com/topics/windows)
 
 ## License
 

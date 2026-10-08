@@ -99,7 +99,11 @@ function registerCoreIpc(options) {
     return { ok: true };
   });
   handle("config:get", async () => configStore.get());
-  handle("config:update", async (payload = {}) => configStore.update(payload));
+  handle("config:update", async (payload = {}) => {
+    const config = configStore.update(payload);
+    pluginRuntime.notifyLanguageChanged(config.ui.language);
+    return config;
+  });
   handle("plugins:list", async () => pluginRegistry.listInstalled());
   handle("plugins:getState", async () => pluginService.getState());
   handle("plugins:checkCatalog", async () => pluginService.checkCatalog());

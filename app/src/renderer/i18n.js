@@ -10,6 +10,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, () => {
   const catalogs = {
     cs: {
+      "nav.hash": "Hash a kontrolní součty",
       "nav.overview": "Přehled", "nav.terminal": "Terminál", "nav.servers": "Servery", "nav.updates": "Aktualizace", "nav.plugins": "Pluginy", "nav.settings": "Nastavení", "nav.aria": "Hlavní navigace",
       "vault.storage": "ŠIFROVANÉ LOKÁLNÍ ÚLOŽIŠTĚ", "vault.unlockTitle": "Odemknout Server Manager", "vault.unlockIntro": "Zadejte hlavní heslo. Heslo se neukládá na disk.", "vault.password": "Hlavní heslo", "vault.confirmPassword": "Potvrzení hesla", "vault.unlock": "Odemknout", "vault.forgot": "Zapomenuté heslo / obnovit vault", "vault.resetIrreversible": "Obnovení nelze vrátit zpět", "vault.resetDescription": "Smažou se všechny serverové profily, uložené host fingerprinty a další šifrovaná data. Instalované pluginy a nastavení aktualizací zůstanou zachované.", "vault.resetInstruction": "Pro potvrzení napište SMAZAT", "vault.cancel": "Zrušit", "vault.resetAction": "Smazat data a obnovit heslo",
       "app.newArchitecture": "NOVÁ ARCHITEKTURA", "app.initializing": "Inicializace…", "app.lock": "Zamknout", "app.coreRunning": "Core běží",
@@ -24,6 +25,7 @@
       "errors.unknown": "Neznámá chyba", "errors.initialization": "Chyba inicializace"
     },
     de: {
+      "nav.hash": "Hash und Prüfsummen",
       "nav.overview": "Übersicht", "nav.terminal": "Terminal", "nav.servers": "Server", "nav.updates": "Updates", "nav.plugins": "Plugins", "nav.settings": "Einstellungen", "nav.aria": "Hauptnavigation",
       "vault.storage": "VERSCHLÜSSELTER LOKALER SPEICHER", "vault.unlockTitle": "Server Manager entsperren", "vault.unlockIntro": "Geben Sie das Hauptpasswort ein. Das Passwort wird nicht gespeichert.", "vault.password": "Hauptpasswort", "vault.confirmPassword": "Passwort bestätigen", "vault.unlock": "Entsperren", "vault.forgot": "Passwort vergessen / Vault zurücksetzen", "vault.resetIrreversible": "Das Zurücksetzen kann nicht rückgängig gemacht werden", "vault.resetDescription": "Alle Serverprofile, gespeicherten Host-Fingerprints und weiteren verschlüsselten Daten werden gelöscht. Installierte Plugins und Update-Einstellungen bleiben erhalten.", "vault.resetInstruction": "Geben Sie zur Bestätigung SMAZAT ein", "vault.cancel": "Abbrechen", "vault.resetAction": "Daten löschen und Passwort zurücksetzen",
       "app.newArchitecture": "NEUE ARCHITEKTUR", "app.initializing": "Initialisierung…", "app.lock": "Sperren", "app.coreRunning": "Core läuft",
@@ -38,6 +40,7 @@
       "errors.unknown": "Unbekannter Fehler", "errors.initialization": "Initialisierungsfehler"
     },
     en: {
+      "nav.hash": "Hash & Checksum",
       "nav.overview": "Overview", "nav.terminal": "Terminal", "nav.servers": "Servers", "nav.updates": "Updates", "nav.plugins": "Plugins", "nav.settings": "Settings", "nav.aria": "Main navigation",
       "vault.storage": "ENCRYPTED LOCAL STORAGE", "vault.unlockTitle": "Unlock Server Manager", "vault.unlockIntro": "Enter the master password. The password is not stored.", "vault.password": "Master password", "vault.confirmPassword": "Confirm password", "vault.unlock": "Unlock", "vault.forgot": "Forgot password / reset vault", "vault.resetIrreversible": "Reset cannot be undone", "vault.resetDescription": "All server profiles, saved host fingerprints, and other encrypted data will be deleted. Installed plugins and update settings will remain.", "vault.resetInstruction": "Type SMAZAT to confirm", "vault.cancel": "Cancel", "vault.resetAction": "Delete data and reset password",
       "app.newArchitecture": "NEW ARCHITECTURE", "app.initializing": "Initializing…", "app.lock": "Lock", "app.coreRunning": "Core is running",

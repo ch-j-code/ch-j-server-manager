@@ -91,21 +91,22 @@ async function bootstrap() {
     },
     logger
   });
+  const hashText = (key) => require("./firstPartyPlugins/chj.hash-checksum/0.0.1/ui/i18n").createI18n(configStore.get().ui.language).t(key);
   const localHashService = new LocalHashService({
     selectFilesDialog: async ({ multiple }) => {
-      const result = await dialog.showOpenDialog(mainWindow, { title: multiple ? "Select local files to hash" : "Select a local file to hash", properties: multiple ? ["openFile", "multiSelections"] : ["openFile"] });
+      const result = await dialog.showOpenDialog(mainWindow, { title: hashText(multiple ? "Select local files to hash" : "Select a local file to hash"), properties: multiple ? ["openFile", "multiSelections"] : ["openFile"] });
       return { canceled: result.canceled, paths: result.filePaths };
     },
     selectDirectoryDialog: async () => {
-      const result = await dialog.showOpenDialog(mainWindow, { title: "Select a local directory", properties: ["openDirectory"] });
+      const result = await dialog.showOpenDialog(mainWindow, { title: hashText("Select a local directory"), properties: ["openDirectory"] });
       return { canceled: result.canceled, path: result.filePaths[0] || null };
     },
     selectManifestDialog: async () => {
-      const result = await dialog.showOpenDialog(mainWindow, { title: "Select a checksum manifest", properties: ["openFile"], filters: [{ name: "Checksum manifests", extensions: ["sha224", "sha256", "sha384", "sha512", "sha3", "blake3", "md5", "sha1", "sfv", "checksums", "txt"] }] });
+      const result = await dialog.showOpenDialog(mainWindow, { title: hashText("Select a checksum manifest"), properties: ["openFile"], filters: [{ name: hashText("Checksum manifests"), extensions: ["sha224", "sha256", "sha384", "sha512", "sha3", "blake3", "md5", "sha1", "sfv", "checksums", "txt"] }] });
       return { canceled: result.canceled, path: result.filePaths[0] || null };
     },
     selectSaveDialog: async ({ suggestedName }) => {
-      const result = await dialog.showSaveDialog(mainWindow, { title: "Save checksum manifest", defaultPath: suggestedName });
+      const result = await dialog.showSaveDialog(mainWindow, { title: hashText("Save checksum manifest"), defaultPath: suggestedName });
       return { canceled: result.canceled, path: result.filePath || null };
     },
     writeClipboard: (text) => clipboard.writeText(text),
@@ -120,6 +121,7 @@ async function bootstrap() {
     logService,
     remoteFileService,
     localHashService,
+    getLanguage: () => configStore.get().ui.language,
     getMainWindow: () => mainWindow,
     isVaultUnlocked: () => vaultStore.status().unlocked,
     preload: path.join(__dirname, "..", "preload", "pluginPreload.js"),

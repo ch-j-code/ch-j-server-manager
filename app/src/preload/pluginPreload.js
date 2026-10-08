@@ -4,6 +4,15 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("chjPlugin", Object.freeze({
   getInfo: () => ipcRenderer.invoke("plugin:getInfo"),
+  ui: Object.freeze({
+    getLanguage: () => ipcRenderer.invoke("plugin:ui:getLanguage"),
+    onLanguageChanged: (callback) => {
+      if (typeof callback !== "function") throw new TypeError("Language callback must be a function.");
+      const listener = (_event, language) => callback(language);
+      ipcRenderer.on("plugin:ui:languageChanged", listener);
+      return () => ipcRenderer.removeListener("plugin:ui:languageChanged", listener);
+    }
+  }),
   close: () => ipcRenderer.invoke("plugin:close"),
   sessions: Object.freeze({
     list: () => ipcRenderer.invoke("plugin:sessions:list")
