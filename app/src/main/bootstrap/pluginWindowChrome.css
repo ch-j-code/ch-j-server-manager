@@ -1,0 +1,20 @@
+html { box-sizing: border-box !important; height: 100% !important; padding-top: 40px !important; }
+chj-plugin-chrome { position: fixed !important; inset: 0 0 auto 0 !important; height: 40px !important; z-index: 2147483647 !important; display: block !important; }
+:host { color-scheme: dark; }
+#chj-chrome-header, #chj-chrome-header * { box-sizing: border-box; }
+#chj-chrome-header { height: 40px; display: flex; align-items: center; gap: 9px; padding: 0 12px;
+  color: #aec2d7; background: #07111f; border-bottom: 1px solid rgba(151,176,205,.16);
+  font: 600 11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  user-select: none; -webkit-app-region: drag; app-region: drag; }
+#chj-chrome-header.native-controls {
+  padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, calc(100vw - 150px)) + 12px);
+  padding-left: calc(env(titlebar-area-x, 0px) + 12px);
+}
+#chj-chrome-mark { display: grid; place-items: center; width: 22px; height: 22px; flex: none;
+  border-radius: 7px; color: white; background: linear-gradient(145deg,#3ba7ff,#315eff); font-size: 8px; }
+#chj-chrome-title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#chj-chrome-collapse { margin-left: auto; flex: none; border: 1px solid rgba(151,176,205,.22); border-radius: 7px;
+  padding: 5px 10px; color: #d9eaff; background: #102033; font: inherit; cursor: pointer;
+  -webkit-app-region: no-drag; app-region: no-drag; }
+#chj-chrome-collapse:hover { background: #193450; }
+#chj-chrome-collapse:focus-visible { outline: 2px solid #42a5ff; outline-offset: 2px; }

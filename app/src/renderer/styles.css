@@ -9,7 +9,7 @@
   --blue: #42a5ff;
   --green: #43d6a0;
   --violet: #9d7bff;
-  --win-titlebar-height: 40px;
+  --window-titlebar-height: 40px;
 }
 
 * { box-sizing: border-box; }
@@ -20,11 +20,11 @@ button, select, input { font: inherit; }
 input, select { border: 1px solid var(--line); border-radius: 9px; color: var(--text); background: #0b1929; padding: 9px 11px; outline: none; }
 input:focus, select:focus { border-color: rgba(66,165,255,.65); box-shadow: 0 0 0 3px rgba(66,165,255,.08); }
 .window-titlebar { display: none; }
-.platform-win32 .window-titlebar { position: fixed; z-index: 200; top: 0; left: 0; right: 0; height: var(--win-titlebar-height); display: flex; align-items: center; gap: 9px; padding: 0 150px 0 13px; border-bottom: 1px solid rgba(151, 176, 205, .14); color: #aec2d7; background: linear-gradient(90deg, #06101c, #091728); box-shadow: 0 8px 24px rgba(0, 0, 0, .16); user-select: none; -webkit-app-region: drag; app-region: drag; }
+:is(.platform-win32, .platform-linux) .window-titlebar { position: fixed; z-index: 200; top: 0; left: 0; right: 0; height: var(--window-titlebar-height); display: flex; align-items: center; gap: 9px; padding: 0 calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, calc(100vw - 150px)) + 12px) 0 calc(env(titlebar-area-x, 0px) + 13px); border-bottom: 1px solid rgba(151, 176, 205, .14); color: #aec2d7; background: linear-gradient(90deg, #06101c, #091728); box-shadow: 0 8px 24px rgba(0, 0, 0, .16); user-select: none; -webkit-app-region: drag; app-region: drag; }
 .window-titlebar-mark { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; color: #fff; background: linear-gradient(145deg, #3ba7ff, #315eff); box-shadow: 0 5px 14px rgba(44, 110, 255, .3); font-size: 8px; font-weight: 800; letter-spacing: -.03em; }
 .window-titlebar-title { overflow: hidden; font-size: 11px; font-weight: 600; letter-spacing: .025em; text-overflow: ellipsis; white-space: nowrap; }
-.platform-win32 .app-shell { min-height: calc(100vh - var(--win-titlebar-height)); margin-top: var(--win-titlebar-height); }
-.platform-win32 .vault-overlay { top: var(--win-titlebar-height); }
+:is(.platform-win32, .platform-linux) .app-shell { min-height: calc(100vh - var(--window-titlebar-height)); margin-top: var(--window-titlebar-height); }
+:is(.platform-win32, .platform-linux) .vault-overlay { top: var(--window-titlebar-height); }
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 248px 1fr; }
 .sidebar { position: relative; display: flex; flex-direction: column; padding: 26px 18px 20px; background: rgba(5, 14, 25, .83); border-right: 1px solid var(--line); backdrop-filter: blur(24px); }
 .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 30px; }

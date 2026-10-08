@@ -34,6 +34,7 @@ Alpha distribution notes:
 - installable first-party plugins for System Monitor, Key Generator, Log Viewer, Users, File Manager, and NGINX Manager;
 - a bundled local Hash & Checksum tool in the sidebar for calculation, verification, comparison, and checksum manifests;
 - sandboxed plugin windows with capability-based access to Core services;
+- dark title bars on Windows and Linux, plugin windows kept above the main window, and a bottom bar for collapsed plugins;
 - alpha, beta, and stable update channels;
 - application updates protected by size checks, SHA-512, and mandatory detached OpenPGP signatures.
 

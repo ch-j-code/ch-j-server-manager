@@ -8,6 +8,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { PassThrough } = require("node:stream");
 const { UpdateInstallerLauncher } = require("../src/main/updates/updateInstallerLauncher");
+const posixOnly = { skip: process.platform === "win32" && "Requires a POSIX executable with Unix ownership and permissions." };
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "chj-linux-installer-"));
@@ -26,7 +27,7 @@ function fakeChild(onStart) {
   return child;
 }
 
-test("Linux installs only the verified deb with fixed pkexec and apt-get arguments", async (t) => {
+test("Linux installs only the verified deb with fixed pkexec and apt-get arguments", posixOnly, async (t) => {
   const { artifactPath } = fixture(t);
   let invocation;
   const launcher = new UpdateInstallerLauncher({
@@ -72,7 +73,7 @@ test("Linux refuses relative, non-deb, missing, and symlink package paths", asyn
   await assert.rejects(() => launcher.install(symlink), { code: "UPDATE_INSTALL_UNSAFE_PATH" });
 });
 
-test("Linux fails closed when authorization is denied or installation fails", async (t) => {
+test("Linux fails closed when authorization is denied or installation fails", posixOnly, async (t) => {
   const { artifactPath } = fixture(t);
   for (const [exitCode, expectedCode] of [[126, "UPDATE_INSTALL_AUTHORIZATION_DENIED"], [100, "UPDATE_INSTALL_FAILED"]]) {
     const launcher = new UpdateInstallerLauncher({

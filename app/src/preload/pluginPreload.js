@@ -2,6 +2,59 @@
 
 const { contextBridge, ipcRenderer } = require("electron");
 
+// Core provides the same chrome to bundled and already installed plugins.
+// Shadow DOM keeps plugin styles out of the title bar; the plugin remains sandboxed.
+window.addEventListener("DOMContentLoaded", () => {
+  const styleUrl = new URL("/__chj_core__/window-chrome.css", window.location.href).href;
+  const host = document.createElement("chj-plugin-chrome");
+  host.id = "chj-plugin-window-chrome";
+  const shadow = host.attachShadow({ mode: "open" });
+  let loadedStyles = 0;
+  const stylesheet = () => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = styleUrl;
+    link.addEventListener("load", () => {
+      if (++loadedStyles === 2) host.dataset.ready = "true";
+    });
+    return link;
+  };
+  document.head.append(stylesheet());
+  const header = document.createElement("header");
+  header.id = "chj-chrome-header";
+  if (process.platform === "win32" || process.platform === "linux") header.className = "native-controls";
+  const mark = document.createElement("span");
+  mark.id = "chj-chrome-mark";
+  mark.textContent = "CH-J";
+  const title = document.createElement("span");
+  title.id = "chj-chrome-title";
+  title.textContent = document.title || "CH-J Server Manager";
+  const collapse = document.createElement("button");
+  collapse.type = "button";
+  collapse.id = "chj-chrome-collapse";
+  const copy = {
+    cs: ["Sbalit", "Sbalit do spodní lišty aplikace"],
+    de: ["Einklappen", "In die untere Leiste der Anwendung einklappen"],
+    en: ["Collapse", "Collapse into the application's bottom bar"]
+  };
+  const translate = (language) => {
+    const [label, description] = copy[language] || copy.en;
+    collapse.textContent = label;
+    collapse.title = description;
+    collapse.setAttribute("aria-label", description);
+  };
+  translate("en");
+  collapse.addEventListener("click", () => {
+    void ipcRenderer.invoke("plugin:window:minimize").catch((error) => console.error("Plugin collapse failed.", error));
+  });
+  ipcRenderer.on("plugin:ui:languageChanged", (_event, language) => translate(language));
+  void ipcRenderer.invoke("plugin:ui:getLanguage").then(translate).catch(() => {});
+  void ipcRenderer.invoke("plugin:getInfo").then((manifest) => { title.textContent = manifest.name; }).catch(() => {});
+  header.append(mark, title, collapse);
+  shadow.append(stylesheet(), header);
+  document.body.prepend(host);
+});
+
 contextBridge.exposeInMainWorld("chjPlugin", Object.freeze({
   getInfo: () => ipcRenderer.invoke("plugin:getInfo"),
   ui: Object.freeze({

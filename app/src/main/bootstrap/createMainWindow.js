@@ -2,6 +2,7 @@
 
 const path = require("node:path");
 const { BrowserWindow, session, shell } = require("electron");
+const { windowChromeOptions } = require("./windowChrome");
 
 function isAllowedExternalUrl(value) {
   try {
@@ -26,18 +27,6 @@ function hardenSession(logger) {
     });
   });
   logger?.info("Default Electron session hardened.");
-}
-
-function windowChromeOptions(platform = process.platform) {
-  if (platform !== "win32") return {};
-  return {
-    titleBarStyle: "hidden",
-    titleBarOverlay: {
-      color: "#07111f",
-      symbolColor: "#d9eaff",
-      height: 40
-    }
-  };
 }
 
 function createMainWindow(options = {}) {

@@ -2,6 +2,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { windowChromeOptions } = require("../bootstrap/windowChrome");
 
 const MIME_TYPES = Object.freeze({
   ".css": "text/css; charset=utf-8",
@@ -65,6 +66,7 @@ class PluginRuntime {
     handle("plugin:getInfo", null, (context) => context.manifest);
     handle("plugin:ui:getLanguage", null, () => this.getLanguage());
     handle("plugin:close", null, (context) => { context.window.close(); return { ok: true }; });
+    handle("plugin:window:minimize", null, (context) => { this._minimize(context); return { ok: true }; });
     handle("plugin:sessions:list", "session.read", () => this.sessionManager.list());
     handle("plugin:system:metrics", "system.metrics.read", (_context, payload) => this.sessionManager.readSystemMetrics(payload.sessionId));
     handle("plugin:keys:generate", "keys.generate", (_context, payload) => this.keyGeneratorService.generate(payload));
@@ -121,8 +123,10 @@ class PluginRuntime {
       if (!requested || requested.startsWith(".") || requested.split("/").some((segment) => !segment || segment === ".." || segment.startsWith("."))) {
         return new Response("Not found", { status: 404 });
       }
-      const filePath = path.join(resolved.root, ...requested.split("/"));
-      const relative = path.relative(resolved.root, filePath);
+      const isChrome = requested === "__chj_core__/window-chrome.css";
+      const root = isChrome ? path.join(__dirname, "..", "bootstrap") : resolved.root;
+      const filePath = isChrome ? path.join(root, "pluginWindowChrome.css") : path.join(root, ...requested.split("/"));
+      const relative = path.relative(root, filePath);
       if (relative.startsWith("..") || path.isAbsolute(relative)) return new Response("Not found", { status: 404 });
       const stat = await fs.promises.stat(filePath);
       if (!stat.isFile() || stat.size > 10 * 1024 * 1024) return new Response("Not found", { status: 404 });
@@ -155,6 +159,7 @@ class PluginRuntime {
       this._emitWindowState();
       return resolved.manifest;
     }
+    const manager = this.getMainWindow?.();
     const window = new this.BrowserWindow({
       title: `${resolved.manifest.name} · CH-J Server Manager`,
       width: 980,
@@ -164,6 +169,9 @@ class PluginRuntime {
       backgroundColor: "#07111f",
       icon: this.icon,
       show: false,
+      parent: manager && !manager.isDestroyed() ? manager : undefined,
+      modal: false,
+      ...windowChromeOptions(),
       webPreferences: {
         preload: this.preload,
         contextIsolation: true,
@@ -190,23 +198,16 @@ class PluginRuntime {
     this.contexts.set(webContentsId, context);
     this.windows.set(resolved.manifest.id, window);
     window.once("ready-to-show", () => {
+      if (window.isDestroyed() || context.minimized) return;
       window.show();
+      window.focus();
       this._emitWindowState();
     });
-    window.on("minimize", (event) => {
-      event.preventDefault();
-      context.minimized = true;
-      window.hide();
-      const manager = this.getMainWindow?.();
-      if (manager && !manager.isDestroyed()) {
-        if (manager.isMinimized()) manager.restore();
-        manager.show();
-        manager.focus();
-      }
-      this._emitWindowState();
-      this.logger?.info("Plugin window minimized to the Core taskbar.", { pluginId: resolved.manifest.id });
-    });
+    window.on("minimize", () => this._minimize(context, { focusManager: !manager?.isMinimized() }));
+    const onManagerMinimize = () => this._minimize(context, { focusManager: false });
+    manager?.on("minimize", onManagerMinimize);
     window.on("closed", () => {
+      manager?.removeListener("minimize", onManagerMinimize);
       this.localHashService?.cleanupPlugin(resolved.manifest.id);
       this.contexts.delete(webContentsId);
       this.windows.delete(resolved.manifest.id);
@@ -228,6 +229,20 @@ class PluginRuntime {
     for (const window of this.windows.values()) {
       if (!window.isDestroyed()) window.close();
     }
+  }
+
+  _minimize(context, { focusManager = true } = {}) {
+    if (context.window.isDestroyed()) return;
+    context.minimized = true;
+    context.window.hide();
+    const manager = this.getMainWindow?.();
+    if (focusManager && manager && !manager.isDestroyed()) {
+      if (manager.isMinimized()) manager.restore();
+      manager.show();
+      manager.focus();
+    }
+    this._emitWindowState();
+    this.logger?.info("Plugin window minimized to the Core taskbar.", { pluginId: context.manifest.id });
   }
 
   close(pluginId) {

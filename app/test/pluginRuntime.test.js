@@ -36,13 +36,24 @@ class FakeWindow extends EventEmitter {
   hide() { this.visible = false; }
   focus() { this.focused = true; }
   loadURL(url) { this.loadedUrl = url; return Promise.resolve(); }
+  close() { this.destroyed = true; this.emit("closed"); }
 }
+
+test("Core chrome CSS is available to strict self-only plugin CSP without exposing other Core files", async () => {
+  const runtime = new PluginRuntime({ registry: { resolveEntry: () => ({ manifest: { entry: "ui/index.html" }, root: "/missing-plugin" }) } });
+  const response = await runtime.handleRequest({ url: "chj-plugin://chj.key-generator/__chj_core__/window-chrome.css" });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("Content-Type"), "text/css; charset=utf-8");
+  assert.match(await response.text(), /#chj-chrome-collapse/);
+  const denied = await runtime.handleRequest({ url: "chj-plugin://chj.key-generator/__chj_core__/windowChrome.js" });
+  assert.equal(denied.status, 404);
+});
 
 test("plugin runtime registers the custom protocol in the isolated plugin session", () => {
   let pluginWindow;
   let pluginWindowOptions;
   const windowStates = [];
-  const managerWindow = { destroyed: false, minimized: false, shown: false, focused: false, isDestroyed() { return this.destroyed; }, isMinimized() { return this.minimized; }, restore() { this.minimized = false; }, show() { this.shown = true; }, focus() { this.focused = true; } };
+  const managerWindow = Object.assign(new EventEmitter(), { destroyed: false, minimized: false, shown: false, focused: false, isDestroyed() { return this.destroyed; }, isMinimized() { return this.minimized; }, restore() { this.minimized = false; }, show() { this.shown = true; }, focus() { this.focused = true; } });
   const manifest = {
     id: "chj.system-monitor",
     name: "System Monitor",
@@ -63,16 +74,46 @@ test("plugin runtime registers the custom protocol in the isolated plugin sessio
   runtime.open(manifest.id);
   assert.equal(pluginWindow.protocolRegistrations, 1);
   assert.equal(pluginWindow.loadedUrl, "chj-plugin://chj.system-monitor/ui/index.html");
-  assert.equal(Object.hasOwn(pluginWindowOptions, "parent"), false);
+  assert.equal(pluginWindowOptions.parent, managerWindow);
+  assert.equal(pluginWindowOptions.modal, false);
   pluginWindow.emit("ready-to-show");
-  let prevented = false;
-  pluginWindow.emit("minimize", { preventDefault: () => { prevented = true; } });
-  assert.equal(prevented, true);
+  pluginWindow.emit("minimize");
   assert.equal(pluginWindow.visible, false);
   assert.equal(managerWindow.focused, true);
   assert.equal(windowStates.at(-1)[0].minimized, true);
   runtime.open(manifest.id);
   assert.equal(pluginWindow.protocolRegistrations, 1);
+  assert.equal(pluginWindow.visible, true);
+  assert.equal(runtime.listWindows()[0].minimized, false);
+  managerWindow.minimized = true;
+  managerWindow.focused = false;
+  managerWindow.emit("minimize");
+  assert.equal(pluginWindow.visible, false);
+  assert.equal(managerWindow.minimized, true);
+  assert.equal(managerWindow.focused, false);
+  assert.equal(runtime.listWindows()[0].minimized, true);
+  pluginWindow.close();
+  assert.equal(managerWindow.listenerCount("minimize"), 0);
+});
+
+test("plugin collapse IPC docks only the sender's window and restores it on reopen", async () => {
+  const handlers = new Map();
+  let pluginWindow;
+  const manifest = { id: "chj.hash-checksum", name: "Hash & Checksum", entry: "ui/index.html", permissions: [] };
+  const runtime = new PluginRuntime({
+    BrowserWindow: class extends FakeWindow { constructor() { super(); pluginWindow = this; } },
+    registry: { resolveEntry: () => ({ manifest, root: "/plugin" }) },
+    isVaultUnlocked: () => true
+  });
+  runtime.registerIpc({ handle: (channel, handler) => handlers.set(channel, handler) });
+  runtime.open(manifest.id);
+  pluginWindow.emit("ready-to-show");
+  const collapse = handlers.get("plugin:window:minimize");
+  await assert.rejects(() => collapse({ sender: { id: 999 } }), { code: "UNTRUSTED_PLUGIN_SENDER" });
+  await collapse({ sender: { id: pluginWindow.webContents.id } });
+  assert.equal(pluginWindow.visible, false);
+  assert.equal(runtime.listWindows()[0].minimized, true);
+  runtime.open(manifest.id);
   assert.equal(pluginWindow.visible, true);
   assert.equal(runtime.listWindows()[0].minimized, false);
 });
