@@ -81,8 +81,13 @@ class PluginRuntime {
     handle("plugin:nginx:saveConfig", "nginx.manage", (_context, payload) => this.sessionManager.saveNginxConfig(payload.sessionId, payload));
     handle("plugin:nginx:reload", "nginx.manage", (_context, payload) => this.sessionManager.reloadNginx(payload.sessionId, payload));
     handle("plugin:files:list", "files.read", (_context, payload) => this.remoteFileService.list(payload.sessionId, payload.path));
-    handle("plugin:files:readText", "files.read", (_context, payload) => this.remoteFileService.readText(payload.sessionId, payload.path));
-    handle("plugin:files:writeText", "files.write", (_context, payload) => this.remoteFileService.writeText(payload.sessionId, payload.path, payload.text));
+    handle("plugin:files:readText", "files.read", (context, payload) => this.remoteFileService.readText(payload.sessionId, payload.path, payload.options || {}, context.manifest.id));
+    handle("plugin:files:writeText", "files.write", (context, payload) => this.remoteFileService.writeText(payload.sessionId, payload.path, payload.text, payload.options || {}, context.manifest.id));
+    handle("plugin:files:saveText", "files.write", (context, payload) => this.remoteFileService.saveText(payload.sessionId, payload.path, payload.text, payload.options || {}, context.manifest.id));
+    handle("plugin:files:listRecovery", "files.read", (_context, payload) => this.remoteFileService.listRecovery(payload.sessionId, payload.options || {}));
+    handle("plugin:files:readRecovery", "files.read", (_context, payload) => this.remoteFileService.readRecovery(payload.sessionId, payload.recoveryId, payload.options || {}));
+    handle("plugin:files:cleanupRecovery", "files.write", (_context, payload) => this.remoteFileService.cleanupRecovery(payload.sessionId, payload.recoveryId, payload.options || {}));
+    handle("plugin:files:closeText", "files.read", (context, payload) => this.remoteFileService.closeText(payload.editId, context.manifest.id));
     handle("plugin:files:createFile", "files.write", (_context, payload) => this.remoteFileService.createFile(payload.sessionId, payload.path));
     handle("plugin:files:mkdir", "files.write", (_context, payload) => this.remoteFileService.mkdir(payload.sessionId, payload.path));
     handle("plugin:files:rename", "files.write", (_context, payload) => this.remoteFileService.rename(payload.sessionId, payload.from, payload.to));
@@ -209,6 +214,7 @@ class PluginRuntime {
     window.on("closed", () => {
       manager?.removeListener("minimize", onManagerMinimize);
       this.localHashService?.cleanupPlugin(resolved.manifest.id);
+      this.remoteFileService?.cleanupPlugin?.(resolved.manifest.id);
       this.contexts.delete(webContentsId);
       this.windows.delete(resolved.manifest.id);
       this._emitWindowState();

@@ -55,3 +55,9 @@ app/test/visitorCounter.test.js
 app/test/webI18n.test.js
 app/test/webSeo.test.js
 app/test/wikiPortal.test.js
+
+# Deliberately public local diagnostics TLS fixtures (never deployment credentials).
+!/app/test/fixtures/diagnostics/ca.pem
+!/app/test/fixtures/diagnostics/server.pem
+!/app/test/fixtures/diagnostics/expired.pem
+!/app/test/fixtures/diagnostics/server-key.pem

@@ -7,6 +7,7 @@
   <title>CH-J Server Manager</title>
   <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="diagnostics.css">
 </head>
 <body>
   <div class="window-titlebar" aria-hidden="true">
@@ -45,6 +46,7 @@
         <button class="nav-button" data-view="profiles"><span>▤</span><span class="nav-label" data-i18n="nav.servers">Servery</span></button>
         <button class="nav-button" data-view="updates"><span>↻</span><span class="nav-label" data-i18n="nav.updates">Aktualizace</span></button>
         <button class="nav-button" data-view="plugins"><span>◇</span><span class="nav-label" data-i18n="nav.plugins">Pluginy</span></button>
+        <button class="nav-button" data-view="diagnostics"><span>⌁</span><span class="nav-label" data-i18n="nav.diagnostics">Diagnostika serverů</span></button>
         <button id="hashToolButton" class="nav-button" type="button"><span>#</span><span class="nav-label" data-i18n="nav.hash">Hash a kontrolní součty</span></button>
         <button class="nav-button" data-view="settings"><span>⌘</span><span class="nav-label" data-i18n="nav.settings">Nastavení</span></button>
       </nav>
@@ -77,7 +79,7 @@
       </section>
 
       <section class="view" data-view-panel="terminal">
-        <div class="section-heading"><div><span class="eyebrow" data-i18n="terminal.eyebrow">SSH SESSION MANAGER</span><h2 data-i18n="terminal.title">Interaktivní terminál</h2></div><span id="terminalState" class="connection-badge disconnected" data-i18n="terminal.disconnected">Odpojeno</span></div>
+        <div class="section-heading"><div><span class="eyebrow" data-i18n="terminal.eyebrow">SSH SESSION MANAGER</span><h2 data-i18n="terminal.title">Interaktivní terminál</h2></div><div class="connection-status"><span id="terminalState" class="connection-badge disconnected" data-i18n="terminal.disconnected">Odpojeno</span><span id="terminalLatency" class="terminal-latency" hidden></span></div></div>
         <article class="panel terminal-panel">
           <div class="terminal-toolbar">
             <label><span data-i18n="terminal.server">Server</span><select id="terminalProfileSelect"><option value="" data-i18n="terminal.selectServer">Vyberte server…</option></select></label>
@@ -146,6 +148,8 @@
         </article>
       </section>
 
+      <section class="view" data-view-panel="diagnostics" id="diagnosticsView"></section>
+
       <section class="view" data-view-panel="settings">
         <div class="section-heading"><div><span class="eyebrow" data-i18n="settings.eyebrow">LOKÁLNÍ KONFIGURACE</span><h2 data-i18n="settings.title">Nastavení Core</h2></div></div>
         <form id="settingsForm" class="panel settings-panel">
@@ -177,6 +181,8 @@
   <script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
   <script src="../../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
   <script src="i18n.js"></script>
+  <script src="diagnosticsI18n.js"></script>
+  <script src="diagnostics.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

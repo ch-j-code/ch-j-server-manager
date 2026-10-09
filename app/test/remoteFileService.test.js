@@ -33,17 +33,11 @@ function fakeSftp() {
   };
 }
 
-test("remote file service lists, reads and atomically writes bounded UTF-8 files", async () => {
+test("remote file service lists remote files", async () => {
   const sftp = fakeSftp();
   const service = new RemoteFileService({ sessionManager: { openSftp: async () => sftp } });
   const entries = await service.list("session-1", "/home/test");
   assert.deepEqual(entries.map((entry) => [entry.name, entry.type]), [["folder", "directory"], ["a.txt", "file"]]);
-  assert.equal((await service.readText("session-1", "/home/test/a.txt")).text, "ahoj");
-  const saved = await service.writeText("session-1", "/home/test/a.txt", "nový obsah");
-  assert.equal(saved.path, "/home/test/a.txt");
-  assert.equal(sftp.files.get("/home/test/a.txt").toString("utf8"), "nový obsah");
-  assert.ok(sftp.calls.some((entry) => entry[0] === "writeFile" && entry[1].includes(".chj-") && entry[2] === 0o644));
-  assert.ok(sftp.calls.some((entry) => entry[0] === "rename" && entry[2] === "/home/test/a.txt"));
 });
 
 test("remote file service rejects unsafe paths, root removal and oversized editor content", async () => {

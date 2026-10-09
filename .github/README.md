@@ -23,6 +23,12 @@ Alpha distribution notes:
 - Ubuntu/Debian builds use a `.deb` package. For an initial installation, use `sudo apt install ./<downloaded-file>.deb` if the graphical software center rejects the package as coming from an unknown publisher.
 - Back up important connection details before testing an alpha update.
 
+## Latest alpha changes
+
+This release adds the integrated Server Diagnostics workspace (CS/DE/EN), reliable Monaco remote-file saves with recovery and conflict detection, and separate SSH RTT and ICMP measurements. Hash & Checksum, plugin windows and existing server profiles remain supported. See [remote editor and latency details](../app/docs/remote-editor-latency.md) and [diagnostics capabilities and limits](../app/docs/server-diagnostics.md).
+
+All platform packages use build ID `core-20261009T160026Z-b5497107`. Detached `.asc` signatures are produced with the CH-J signing subkey on a YubiKey; [SHA512SUMS](https://www.sm.ch-j.de/files/apps/builds/core-20261009T160026Z-b5497107/SHA512SUMS) and its [OpenPGP signature](https://www.sm.ch-j.de/files/apps/builds/core-20261009T160026Z-b5497107/SHA512SUMS.asc) cover all four artifacts.
+
 ## Features
 
 - encrypted local vault using scrypt and AES-256-GCM;
@@ -32,17 +38,30 @@ Alpha distribution notes:
 - file browsing, editing, upload, download, deletion, and ZIP/TAR/TAR.GZ export through a restricted SFTP interface;
 - Czech, German, and English user interfaces;
 - installable first-party plugins for System Monitor, Key Generator, Log Viewer, Users, File Manager, and NGINX Manager;
+- integrated Server Diagnostics: ICMP, traceroute, DNS, HTTP/1.1/2/3 capability tests, server timings, compression, TLS, TCP ports, local history and JSON/CSV/TXT exports;
 - a bundled local Hash & Checksum tool in the sidebar for calculation, verification, comparison, and checksum manifests;
 - sandboxed plugin windows with capability-based access to Core services;
 - dark title bars on Windows and Linux, plugin windows kept above the main window, and a bottom bar for collapsed plugins;
 - alpha, beta, and stable update channels;
 - application updates protected by size checks, SHA-512, and mandatory detached OpenPGP signatures.
 
+## Server Diagnostics
+
+Open **Server Diagnostics** between **Plugins** and **Hash & Checksum**. Enter a hostname, IPv4, IPv6 or HTTP(S)/WS(S) URL, choose Auto / IPv4 / IPv6 / Both, and run the overview or an individual tool. No SSH connection or external plugin is required. Results update while probes run, and individual tools or the entire run can be stopped.
+
+The module includes per-packet ICMP graphs/statistics, progressive traceroute, twelve DNS record types with TTL and consistency observations, independently negotiated HTTP versions, request phase timings and warm/cold connections, verified gzip/deflate/Brotli (and runtime-supported zstd), TLS 1.2/1.3 certificate inspection, bounded TCP port tests, an SSH host-key handshake without authentication, security-header/redirect checks and an optional WebSocket handshake. It supports Czech, German and English and local light/dark/system themes.
+
+HTTP/3 requires a separately available curl build with HTTP3/QUIC and `--http3-only` (7.88+). Success requires an actual HTTP/3 result over UDP/443; otherwise the UI reports unavailable, unsupported or error with a reason. `Alt-Svc` and HTTP/2 fallback never establish HTTP/3 support. DNSSEC is explicitly **not validated**; DS/DNSKEY records are observations. ICMP failures do not label a server offline.
+
+History stays in the application's local data directory. JSON/CSV/TXT reports omit bodies, cookies, authentication metadata and URL queries. Import JSON, reopen or compare saved runs from History. No new npm dependencies are required; OS ping/traceroute tools and optional HTTP3-enabled curl provide the platform-specific capabilities.
+
+See [implementation, IPC, limits and verification](../app/docs/server-diagnostics.md). Run `npm test` for deterministic network tests and `npm run test:diagnostics:ui` for the Electron UI smoke test (requires a graphical desktop).
+
 ## Hash & Checksum
 
 Calculate file hashes, verify checksums, and compare local files with 49 algorithms, including SHA-256, SHA-512, SHA-3, BLAKE3, and xxHash. The built-in hashing tool supports HEX and Base64 output and GNU, BSD, and SFV checksum manifests.
 
-Open **Hash & Checksum** from the left sidebar, directly below **Plugins**, after unlocking the vault. The tool is bundled with the application, opens in its own window, and does not appear in the installed-plugin list.
+Open **Hash & Checksum** from the left sidebar, directly below **Server Diagnostics**, after unlocking the vault. The tool is bundled with the application, opens in its own window, and does not appear in the installed-plugin list.
 
 The interface follows the application's saved language setting: **Czech, German, or English**. Saving a language change updates an already open Hash window, including controls, progress, result statuses, errors, and native file-dialog labels, while preserving selected files, algorithms, parameters, and results.
 
@@ -129,6 +148,8 @@ The long-term update trust anchor is the primary OpenPGP fingerprint:
 0D92 778A D8EC F85C 80E3  9248 48F2 433A D9CD F453
 ```
 
+To verify a download manually, obtain the bundled [public key](../app/ch-j-signing-public.asc), check that its primary fingerprint matches the value above, and import it with `gpg --import ch-j-signing-public.asc`. Verify the downloaded manifest with `gpg --verify SHA512SUMS.asc SHA512SUMS`, then check the files with `shasum -a 512 -c SHA512SUMS` (macOS) or `sha512sum -c SHA512SUMS` (Linux). Windows PowerShell provides `Get-FileHash -Algorithm SHA512 <file>`. Each installer also has a detached `.asc` signature that can be checked with `gpg --verify <file>.asc <file>`.
+
 Valid signing subkeys may be rotated as long as they remain cryptographically bound to this primary key and are valid for signing. Revoked, expired, unknown, malformed, or otherwise invalid keys and signatures block installation.
 
 The alpha service is still undergoing distribution hardening. In particular, standard CA verification for the explicitly allowlisted update host is temporarily relaxed in test mode, and macOS production signing/notarization is not yet enabled. OpenPGP verification remains mandatory for application update artifacts, but alpha builds should not be treated as production releases.
@@ -165,7 +186,7 @@ An update service, independently distributed plugin packages, and release toolin
 
 Requirements:
 
-- Node.js 18 or newer;
+- Node.js 24 LTS (24.18 or newer);
 - npm;
 - the native toolchain required by Electron dependencies on the host platform.
 

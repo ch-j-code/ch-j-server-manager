@@ -52,9 +52,10 @@ const elements = {
 
 const titles = {
   overview: "nav.overview", terminal: "terminal.title", profiles: "nav.servers",
-  updates: "nav.updates", plugins: "nav.plugins", settings: "nav.settings"
+  updates: "nav.updates", plugins: "nav.plugins", diagnostics: "nav.diagnostics", settings: "nav.settings"
 };
 
+let diagnosticsView = null;
 let terminal = null;
 let fitAddon = null;
 
@@ -94,6 +95,7 @@ function applyLanguage(language) {
   if (state.config) elements.updateChannel.textContent = t("updates.channel", { channel: state.config.updates.channel });
   renderPlugins();
   renderProfiles();
+  diagnosticsView?.refreshLanguage();
   renderTerminalProfileSelect();
   if (state.vault) configureVault(state.vault);
   const terminalStateKeys = { disconnected: "terminal.disconnected", connecting: "terminal.connecting", connected: "terminal.connected", error: "terminal.connectionError" };
@@ -313,6 +315,7 @@ function clearProtectedUi() {
   state.selectedProfileId = "";
   state.terminalConnected = false;
   renderProfiles();
+  diagnosticsView?.refreshLanguage();
   renderTerminalProfileSelect();
   setTerminalState("disconnected", t("terminal.disconnected"));
   terminal?.reset();
@@ -323,6 +326,7 @@ async function loadProfiles(selectId = state.selectedProfileId) {
   if (!state.profiles.some((profile) => profile.id === selectId)) selectId = state.profiles[0]?.id || "";
   state.selectedProfileId = selectId;
   renderProfiles();
+  diagnosticsView?.refreshLanguage();
   renderTerminalProfileSelect();
   if (selectId) fillProfileForm(state.profiles.find((profile) => profile.id === selectId));
   else resetProfileForm();
@@ -439,9 +443,20 @@ function setTerminalState(kind, text) {
   state.terminalStateKind = kind;
   elements.terminalState.className = `connection-badge ${kind}`;
   elements.terminalState.textContent = text;
+  if (kind !== "connected") state.terminalLatency = null;
+  renderTerminalLatency();
   elements.connectButton.disabled = kind === "connecting" || kind === "connected";
   elements.disconnectButton.disabled = kind !== "connected" && kind !== "connecting";
   elements.terminalProfileSelect.disabled = kind === "connecting" || kind === "connected";
+}
+
+function renderTerminalLatency() {
+  const element = $("#terminalLatency");
+  element.hidden = state.terminalStateKind !== "connected";
+  const format = (value) => typeof value === "number" && Number.isFinite(value) && value > 0
+    ? (value < 0.1 ? "<0.1 ms" : `${value.toFixed(1)} ms`) : `— (${t("terminal.latencyUnavailable")})`;
+  element.textContent = `${t("terminal.ping")}: ${format(state.terminalLatency?.pingMs)} · ${t("terminal.sshRtt")}: ${format(state.terminalLatency?.sshRttMs)}`;
+  element.title = t("terminal.latencyMeaning");
 }
 
 async function connectTerminal(retry = false) {
@@ -533,6 +548,10 @@ async function initialize() {
   elements.autoCheckInput.checked = state.config.updates.autoCheck;
   elements.baseUrlsText.textContent = state.config.updates.baseUrls.join("\n");
   elements.updateChannel.textContent = t("updates.channel", { channel: state.config.updates.channel });
+  diagnosticsView = window.CHJ_DIAGNOSTICS.mount($("#diagnosticsView"), {
+    api: api.diagnostics, language: () => i18n.getLanguage(), getTheme: () => state.config.ui.theme,
+    setTheme: async (theme) => { state.config = await api.updateConfig({ ui: { theme } }); }
+  });
   renderPlugins(); renderUpdate(state.update); initTerminal(); configureVault(state.vault);
   if (state.vault.unlocked) await loadProfiles();
 }
@@ -693,6 +712,7 @@ api?.onSshData((payload) => { if (payload.sessionId === TERMINAL_SESSION_ID) ter
 api?.onSshState((payload) => {
   if (payload.sessionId !== TERMINAL_SESSION_ID) return;
   state.terminalConnected = payload.state === "connected";
+  state.terminalLatency = payload.latency;
   if (payload.state === "connecting") setTerminalState("connecting", t("terminal.connecting"));
   else if (payload.state === "connected") setTerminalState("connected", t("terminal.connected"));
   else setTerminalState("disconnected", t("terminal.disconnected"));

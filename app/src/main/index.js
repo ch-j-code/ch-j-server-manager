@@ -9,6 +9,7 @@ const { Logger } = require("./logging/logger");
 const { LogService } = require("./logging/logService");
 const { RemoteFileService } = require("./files/remoteFileService");
 const { LocalHashService } = require("./hashing/localHashService");
+const { DiagnosticsService } = require("./diagnostics/diagnosticsService");
 const { PLUGIN_API_VERSION, PluginRegistry } = require("./plugins/pluginRegistry");
 const { PluginCatalogProvider } = require("./plugins/pluginCatalogProvider");
 const { PluginInstaller } = require("./plugins/pluginInstaller");
@@ -36,6 +37,7 @@ let logger = null;
 let updateService = null;
 let sessionManager = null;
 let vaultStore = null;
+let diagnosticsService = null;
 
 const hasSingleInstanceLock = buildSmokeUserData ? true : app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) app.quit();
@@ -54,6 +56,7 @@ async function bootstrap() {
   const logService = new LogService(logger.logPath);
   const configStore = new ConfigStore(storageRoot);
   configStore.load();
+  diagnosticsService = new DiagnosticsService({ storageRoot });
   const testUpdateFetch = createTestHttpsFetch({
     allowedBaseUrls: configStore.get().updates.baseUrls,
     // Jen starý host používá dočasnou alfa výjimku. Kanonický www host
@@ -189,6 +192,7 @@ async function bootstrap() {
   mainWindow = createMainWindow({ logger, icon: appIcon });
   registerCoreIpc({
     ipcMain,
+    clipboard,
     shell,
     dialog,
     app,
@@ -202,6 +206,7 @@ async function bootstrap() {
     vaultStore,
     updateService,
     updateInstallerLauncher,
+    diagnosticsService,
     getMainWindow: () => mainWindow,
     logger
   });
@@ -212,6 +217,8 @@ async function bootstrap() {
   sessionManager.on("data", (payload) => sendToRenderer("ssh:data", payload));
   sessionManager.on("state", (payload) => sendToRenderer("ssh:state", payload));
   sessionManager.on("sessionError", (payload) => sendToRenderer("ssh:error", payload));
+  diagnosticsService.on("progress", (payload) => sendToRenderer("diagnostics:progress", payload));
+  mainWindow.on("closed", () => diagnosticsService.stopAll());
 
   mainWindow.webContents.once("did-finish-load", () => {
     const config = configStore.get();
@@ -245,6 +252,7 @@ app.whenReady().then(bootstrap).catch((error) => {
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     mainWindow = createMainWindow({ logger });
+    mainWindow.on("closed", () => diagnosticsService?.stopAll());
   } else {
     focusMainWindow();
   }
@@ -255,6 +263,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  diagnosticsService?.stopAll();
   void sessionManager?.disconnectAll("app-quit");
   vaultStore?.lock();
 });

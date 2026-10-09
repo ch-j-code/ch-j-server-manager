@@ -6,6 +6,10 @@ const net = require("node:net");
 const { EventEmitter } = require("node:events");
 const { StringDecoder } = require("node:string_decoder");
 const { Client } = require("ssh2");
+const path = require("node:path");
+const { LatencyMonitor } = require("./latencyMonitor");
+const REMOTE_EDITOR = fs.readFileSync(path.join(__dirname, "../files/remoteEditor.py"), "utf8");
+const EDITOR_STARTED = "\x1eCHJ_EDITOR_START\n";
 
 const SESSION_ID_PATTERN = /^[A-Za-z0-9._-]{1,80}$/;
 const MAX_INPUT_LENGTH = 64 * 1024;
@@ -147,6 +151,11 @@ function normalizeNginxConfigPath(value) {
 
 function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
+}
+
+function openExec(client, command, callback) {
+  try { client.exec(command, callback); }
+  catch (error) { callback(error); }
 }
 
 function normalizeSudoPassword(value) {
@@ -295,6 +304,7 @@ class SessionManager extends EventEmitter {
     this.lookupHost = options.lookupHost || dns.lookup;
     this.resolve4 = options.resolve4 || dns.resolve4;
     this.resolve6 = options.resolve6 || dns.resolve6;
+    this.latencyMonitor = options.latencyMonitor || new LatencyMonitor();
     this.sessions = new Map();
     this.pendingTrust = new Map();
   }
@@ -318,6 +328,7 @@ class SessionManager extends EventEmitter {
       profileId: profile.id,
       label: profile.label,
       host: profile.host,
+      address: resolvedHost.address,
       port: profile.port,
       username: profile.username,
       authMethod: profile.authMethod,
@@ -408,6 +419,13 @@ class SessionManager extends EventEmitter {
           });
           const status = this._publicStatus(record);
           this.emit("state", status);
+          record.stopLatency = this.latencyMonitor.start(record,
+            () => this._execFixed(record, "true", 5000),
+            (latency) => {
+              if (record.finalized || this.sessions.get(sessionId) !== record) return;
+              record.latency = latency;
+              this.emit("state", this._publicStatus(record));
+            });
           resolve(status);
         });
       });
@@ -479,6 +497,38 @@ class SessionManager extends EventEmitter {
   openSftp(sessionId) {
     const record = this._requireConnected(sessionId);
     return new Promise((resolve, reject) => record.client.sftp((error, sftp) => error ? reject(new SessionError("SFTP_OPEN_FAILED", error.message)) : resolve(sftp)));
+  }
+
+  // Internal fixed protocol only. Neither renderer nor plugin can supply code.
+  async remoteEditor(sessionId, request, authorization = {}) {
+    const record = this._requireConnected(sessionId);
+    let password;
+    try { password = normalizeSudoPassword(authorization.sudoPassword); }
+    catch { throw new SessionError("FILE_SUDO_PASSWORD_INVALID", "Invalid sudo password."); }
+    if (password && authorization.sudo !== true) throw new SessionError("FILE_SUDO_AUTHORIZATION_REQUIRED", "Explicit sudo authorization is required.");
+    const command = `printf '\\036CHJ_EDITOR_START\\n'; exec python3 -I -B -c ${shellQuote(REMOTE_EDITOR)} ${shellQuote(JSON.stringify(request))}`;
+    let output;
+    try {
+      output = authorization.sudo === true
+        ? await this._execSudo(record, command, password, 60000, 36 * 1024 * 1024)
+        : await this._execFixed(record, command, 60000, 36 * 1024 * 1024);
+    } catch (error) {
+      // Remote stderr and sudo diagnostics never become editor errors or logs.
+      const definitiveSudoFailure = authorization.sudo === true && error.remoteExitCode === 1 && error.editorStarted === false;
+      throw new SessionError(definitiveSudoFailure ? "FILE_SUDO_FAILED" : error.remoteExitCode === 127 ? "FILE_DEPENDENCY_UNAVAILABLE" : request.operation === "finalize" ? "FILE_RESULT_UNKNOWN" : "FILE_EXEC_FAILED",
+        "Remote editor operation was not confirmed. Inspect recovery before retrying.");
+    }
+    let response;
+    try {
+      if (!output.stdout.startsWith(EDITOR_STARTED)) throw new Error("Missing editor marker");
+      response = JSON.parse(output.stdout.slice(EDITOR_STARTED.length));
+    }
+    catch { throw new SessionError("FILE_RESULT_UNKNOWN", "Remote editor result could not be verified."); }
+    if (!response || response.ok !== true || !response.value || typeof response.value !== "object") {
+      const code = /^FILE_[A-Z_]+$/.test(response?.code) ? response.code : "FILE_PROTOCOL_ERROR";
+      throw new SessionError(code, `${code}: Remote editor operation stopped; recoverable copies were retained.`);
+    }
+    return response.value;
   }
 
   async readUsers(sessionId) {
@@ -692,24 +742,34 @@ class SessionManager extends EventEmitter {
     return { ...selected, source };
   }
 
-  _execFixed(record, command, timeoutMs) {
+  _execFixed(record, command, timeoutMs, outputLimit = MAX_COMMAND_OUTPUT) {
     return new Promise((resolve, reject) => {
       let settled = false;
       let stdout = "";
       let stderr = "";
-      const timer = setTimeout(() => finish(new SessionError("REMOTE_COMMAND_TIMEOUT", "The system metrics command timed out.")), timeoutMs);
+      let channel;
+      const cancel = () => finish(new SessionError("SESSION_NOT_CONNECTED", "The SSH connection was lost."));
+      record.pendingExec ||= new Set();
+      record.pendingExec.add(cancel);
+      const timer = setTimeout(() => {
+        finish(new SessionError("REMOTE_COMMAND_TIMEOUT", "The remote command timed out."));
+        try { channel?.close(); } catch {}
+      }, timeoutMs);
       timer.unref?.();
       const finish = (error, result) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
+        record.pendingExec.delete(cancel);
         if (error) reject(error); else resolve(result);
       };
-      record.client.exec(command, (error, stream) => {
+      openExec(record.client, command, (error, stream) => {
+        if (settled) { try { stream?.close(); } catch {} return; }
         if (error) { finish(new SessionError("REMOTE_COMMAND_FAILED", error.message)); return; }
+        channel = stream;
         const append = (target, chunk) => {
           const next = target + chunk.toString("utf8");
-          if (Buffer.byteLength(next, "utf8") > MAX_COMMAND_OUTPUT) {
+          if (Buffer.byteLength(next, "utf8") > outputLimit) {
             try { stream.close(); } catch {}
             finish(new SessionError("REMOTE_OUTPUT_TOO_LARGE", "The system metrics response is too large."));
             return target;
@@ -720,31 +780,41 @@ class SessionManager extends EventEmitter {
         stream.stderr?.on("data", (chunk) => { stderr = append(stderr, chunk); });
         stream.once("error", (streamError) => finish(new SessionError("REMOTE_COMMAND_FAILED", streamError.message)));
         stream.once("close", (code) => {
-          if (Number(code || 0) !== 0) finish(new SessionError("REMOTE_COMMAND_FAILED", stderr.trim() || `Metrics command exited with ${code}.`));
+          if (!Number.isInteger(code) || code !== 0) finish(new SessionError("REMOTE_COMMAND_FAILED", stderr.trim() || `Remote command exited with ${code}.`, { remoteExitCode: code, editorStarted: stdout.startsWith(EDITOR_STARTED) }));
           else finish(null, { stdout, stderr });
         });
       });
     });
   }
 
-  _execSudo(record, command, sudoPassword, timeoutMs) {
+  _execSudo(record, command, sudoPassword, timeoutMs, outputLimit = MAX_COMMAND_OUTPUT) {
     return new Promise((resolve, reject) => {
       let settled = false; let stdout = ""; let stderr = "";
-      const timer = setTimeout(() => finish(new SessionError("REMOTE_COMMAND_TIMEOUT", "The user-management command timed out.")), timeoutMs);
+      let channel;
+      const cancel = () => finish(new SessionError("SESSION_NOT_CONNECTED", "The SSH connection was lost."));
+      record.pendingExec ||= new Set();
+      record.pendingExec.add(cancel);
+      const timer = setTimeout(() => {
+        finish(new SessionError("REMOTE_COMMAND_TIMEOUT", "The remote command timed out."));
+        try { channel?.close(); } catch {}
+      }, timeoutMs);
       timer.unref?.();
       const finish = (error, result) => {
         if (settled) return;
         settled = true; clearTimeout(timer);
+        record.pendingExec.delete(cancel);
         if (error) reject(error); else resolve(result);
       };
       const isRootSession = record.username === "root";
       const prefix = isRootSession ? "sh -c " : (sudoPassword ? "sudo -S -p '' -- sh -c " : "sudo -n -- sh -c ");
       const quoted = `'${String(command).replace(/'/g, `'"'"'`)}'`;
-      record.client.exec(prefix + quoted, (error, stream) => {
+      openExec(record.client, prefix + quoted, (error, stream) => {
+        if (settled) { try { stream?.close(); } catch {} return; }
         if (error) { finish(new SessionError("USER_ACTION_FAILED", error.message)); return; }
+        channel = stream;
         const append = (target, chunk) => {
           const next = target + chunk.toString("utf8");
-          if (Buffer.byteLength(next, "utf8") > MAX_COMMAND_OUTPUT) {
+          if (Buffer.byteLength(next, "utf8") > outputLimit) {
             try { stream.close(); } catch {}
             finish(new SessionError("REMOTE_OUTPUT_TOO_LARGE", "The user-management response is too large."));
             return target;
@@ -755,7 +825,7 @@ class SessionManager extends EventEmitter {
         stream.stderr?.on("data", (chunk) => { stderr = append(stderr, chunk); });
         stream.once("error", (streamError) => finish(new SessionError("USER_ACTION_FAILED", streamError.message)));
         stream.once("close", (code) => {
-          if (Number(code || 0) !== 0) finish(new SessionError("USER_ACTION_FAILED", stderr.trim() || `User command exited with ${code}.`));
+          if (!Number.isInteger(code) || code !== 0) finish(new SessionError("USER_ACTION_FAILED", stderr.trim() || `User command exited with ${code}.`, { remoteExitCode: code, editorStarted: stdout.startsWith(EDITOR_STARTED) }));
           else finish(null, { stdout, stderr });
         });
         if (!isRootSession && sudoPassword) stream.end(`${sudoPassword}\n`); else stream.end();
@@ -767,6 +837,9 @@ class SessionManager extends EventEmitter {
     if (record.finalized) return;
     record.finalized = true;
     record.state = "disconnected";
+    record.stopLatency?.();
+    record.latency = null;
+    for (const cancel of record.pendingExec || []) cancel();
     if (this.sessions.get(record.sessionId) === record) this.sessions.delete(record.sessionId);
     try { record.stream?.end(); } catch {}
     try { record.client?.end(); } catch {}
@@ -786,7 +859,8 @@ class SessionManager extends EventEmitter {
       port: record.port,
       username: record.username,
       authMethod: record.authMethod,
-      state: record.state
+      state: record.state,
+      latency: record.latency || { pingMs: null, sshRttMs: null, measuredAt: null }
     };
   }
 }

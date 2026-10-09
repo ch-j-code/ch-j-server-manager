@@ -11,6 +11,12 @@ const MAX_TRANSFER_BYTES = 16 * 1024 * 1024 * 1024;
 const MAX_BATCH_ENTRIES = 10000;
 const MAX_SELECTED_ENTRIES = 100;
 const ARCHIVE_FORMATS = new Set(["zip", "tar", "tar.gz"]);
+const DEFINITE_EDITOR_FAILURES = new Set([
+  "FILE_CONFLICT", "FILE_PERMISSION_DENIED", "FILE_NOT_FOUND", "FILE_UNSAFE_PATH", "FILE_UNSAFE_TYPE_OR_LINK",
+  "FILE_UNSAFE_WORKSPACE", "FILE_UNSAFE_PRIVILEGED_DIRECTORY", "FILE_UPLOAD_INCOMPLETE", "FILE_TOO_LARGE",
+  "FILE_METADATA_UNSUPPORTED", "FILE_REMOTE_IO_FAILED", "FILE_SUDO_FAILED", "FILE_DEPENDENCY_UNAVAILABLE",
+  "FILE_SUDO_PASSWORD_INVALID", "FILE_SUDO_AUTHORIZATION_REQUIRED", "FILE_LINUX_REQUIRED"
+]);
 
 function normalizeRemotePath(value) {
   const raw = String(value || "").trim();
@@ -44,6 +50,8 @@ class RemoteFileService {
     this.selectDownloadDirectory = options.selectDownloadDirectory;
     this.selectArchivePath = options.selectArchivePath;
     this.logger = options.logger;
+    this.edits = new Map();
+    this.legacyEdits = new Map();
   }
 
   async list(sessionId, remotePath) {
@@ -69,42 +77,169 @@ class RemoteFileService {
     });
   }
 
-  async readText(sessionId, remotePath) {
-    const target = normalizeRemotePath(remotePath);
-    return this._withSftp(sessionId, async (sftp) => {
-      const attrs = await call(sftp, "stat", target);
-      if (typeof attrs?.isDirectory === "function" && attrs.isDirectory()) throw new Error("A directory cannot be opened in the text editor.");
-      const size = Math.max(0, Number(attrs?.size) || 0);
-      if (size > MAX_TEXT_BYTES) throw new Error(`Text editor limit is ${MAX_TEXT_BYTES} bytes.`);
-      const data = Buffer.from(await call(sftp, "readFile", target));
-      if (data.length > MAX_TEXT_BYTES) throw new Error(`Text editor limit is ${MAX_TEXT_BYTES} bytes.`);
-      let text;
-      try { text = new TextDecoder("utf-8", { fatal: true }).decode(data); }
-      catch { throw new Error("The selected file is not valid UTF-8 text."); }
-      return { path: target, text, size: data.length, modifiedAt: Number(attrs?.mtime) > 0 ? new Date(Number(attrs.mtime) * 1000).toISOString() : null };
+  _editorPath(value) {
+    const raw = String(value || "");
+    if (!raw || raw.length > 4096 || !raw.startsWith("/") || /[\0\r\n]/.test(raw)) throw new Error("Remote path must be an absolute path.");
+    if (raw.split("/").some((part) => part === "." || part === "..")) throw new Error("Editor paths cannot contain traversal components.");
+    return path.posix.normalize(raw);
+  }
+
+  _identity(sessionId) {
+    const session = this.sessionManager.list().find((entry) => entry.sessionId === sessionId && entry.state === "connected");
+    if (!session) throw new Error("The editor session is not connected.");
+    return JSON.stringify([sessionId, session.profileId, session.host, session.port, session.username]);
+  }
+
+  async readText(sessionId, remotePath, options = {}, owner = "core") {
+    const target = this._editorPath(remotePath);
+    const identity = this._identity(sessionId);
+    const value = await this.sessionManager.remoteEditor(sessionId, { operation: "read", path: target }, options);
+    const data = Buffer.from(value.data, "base64");
+    if (data.length > MAX_TEXT_BYTES) throw new Error(`Text editor limit is ${MAX_TEXT_BYTES} bytes.`);
+    let text;
+    try { text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(data); }
+    catch { throw new Error("The selected file is not valid UTF-8 text."); }
+    if (crypto.createHash("sha256").update(data).digest("hex") !== value.baseline.hash) throw new Error("Remote editor content verification failed.");
+    if (this.edits.size >= 1000) throw new Error("Close unused editor documents before opening more files.");
+    const editId = crypto.randomBytes(16).toString("hex");
+    this.edits.set(editId, { target, identity, owner, baseline: value.baseline, busy: false, uncertain: false });
+    const key = JSON.stringify([owner, identity, target]);
+    // A legacy call has no document identifier. Once two documents are open,
+    // choosing either baseline would silently defeat conflict detection.
+    this.legacyEdits.set(key, this.legacyEdits.has(key) ? null : editId);
+    return { path: target, text, size: data.length, editId, baselineHash: value.baseline.hash, metadata: value.baseline,
+      modifiedAt: new Date(Number(BigInt(value.baseline.mtimeNs) / 1000000n)).toISOString() };
+  }
+
+  async writeText(sessionId, remotePath, text, options = {}, owner = "core") {
+    const target = this._editorPath(remotePath);
+    const data = Buffer.from(String(text ?? ""), "utf8");
+    if (data.length > MAX_TEXT_BYTES) throw new Error(`Text editor limit is ${MAX_TEXT_BYTES} bytes.`);
+    const identity = this._identity(sessionId);
+    const legacyId = this.legacyEdits.get(JSON.stringify([owner, identity, target]));
+    if (!options.editId && legacyId === null) {
+      const error = new Error("FILE_EDIT_ID_REQUIRED: Multiple documents are open for this path; pass the editId returned by readText.");
+      error.code = "FILE_EDIT_ID_REQUIRED";
+      throw error;
+    }
+    const editId = options.editId || legacyId;
+    const edit = this.edits.get(editId);
+    if (!edit || edit.target !== target || edit.identity !== identity || edit.owner !== owner) throw new Error("Reopen this file to capture an editor baseline before saving.");
+    if (edit.busy || edit.uncertain) {
+      const error = new Error("FILE_RESULT_UNKNOWN: Inspect recovery before starting another save.");
+      error.code = "FILE_RESULT_UNKNOWN";
+      throw error;
+    }
+    edit.busy = true;
+    let recovery;
+    let submitted = false;
+    try {
+      const hash = crypto.createHash("sha256").update(data).digest("hex");
+      const id = crypto.randomBytes(16).toString("hex");
+      recovery = await this.sessionManager.remoteEditor(sessionId, { operation: "prepare", id, path: target, baseline: edit.baseline, hash });
+      await this._uploadEditorCopy(sessionId, recovery.temporary, data);
+      submitted = true;
+      const saved = await this.sessionManager.remoteEditor(sessionId, {
+        operation: "finalize", id, uid: recovery.uid, path: target, baseline: edit.baseline, hash
+      }, options);
+      if (saved.status !== "saved" || saved.hash !== hash || saved.baseline?.hash !== hash) {
+        const error = new Error("Remote save could not be confirmed."); error.code = "FILE_RESULT_UNKNOWN"; throw error;
+      }
+      edit.baseline = saved.baseline;
+      let recoveryAvailable = false;
+      try { await this.sessionManager.remoteEditor(sessionId, { operation: "cleanup", id, uid: recovery.uid }, options); }
+      catch { recoveryAvailable = true; }
+      this.logger?.info("Remote editor save confirmed.", { sessionId, path: target, bytes: data.length });
+      return { path: target, size: data.length, status: "saved", editId, baselineHash: hash, recoveryId: id, recoveryAvailable };
+    } catch (error) {
+      const knownFailure = DEFINITE_EDITOR_FAILURES.has(error.code);
+      edit.uncertain = submitted && !knownFailure;
+      error.code = edit.uncertain ? "FILE_RESULT_UNKNOWN" : error.code || "FILE_UPLOAD_FAILED";
+      error.recoveryId = recovery?.recoveryId;
+      error.recoveryPath = recovery?.temporary;
+      error.status = edit.uncertain ? "unknown" : "failed";
+      error.message = `${error.code}: Save was not confirmed. Keep editor content and inspect recovery${recovery ? " (" + recovery.recoveryId + ")" : ""}.`;
+      throw error;
+    } finally {
+      edit.busy = false;
+      if (edit.dispose) this.closeText(editId, owner);
+    }
+  }
+
+  async saveText(sessionId, remotePath, text, options = {}, owner = "core") {
+    try { return { ok: true, value: await this.writeText(sessionId, remotePath, text, options, owner) }; }
+    catch (error) { return { ok: false, error: { code: error.code || "FILE_SAVE_FAILED", message: error.message,
+      status: error.status || "failed", recoveryId: error.recoveryId, recoveryPath: error.recoveryPath } }; }
+  }
+
+  _uploadEditorCopy(sessionId, temporary, data) {
+    return new Promise((resolve, reject) => {
+      let sftp;
+      let settled = false;
+      const finish = (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        try { sftp?.end?.(); } catch {}
+        if (error) reject(error); else resolve();
+      };
+      const timer = setTimeout(() => finish(Object.assign(new Error("Editor upload timed out."), { code: "FILE_UPLOAD_TIMEOUT" })), 60000);
+      timer.unref?.();
+      Promise.resolve().then(() => this.sessionManager.openSftp(sessionId)).then((channel) => {
+        if (settled) { try { channel.end?.(); } catch {} return; }
+        sftp = channel;
+        call(sftp, "writeFile", temporary, data, { flag: "wx", mode: 0o600 }).then(() => finish(), finish);
+      }, finish);
     });
   }
 
-  async writeText(sessionId, remotePath, text) {
-    const target = normalizeRemotePath(remotePath);
-    const data = Buffer.from(String(text ?? ""), "utf8");
-    if (data.length > MAX_TEXT_BYTES) throw new Error(`Text editor limit is ${MAX_TEXT_BYTES} bytes.`);
-    const directory = path.posix.dirname(target);
-    const temporary = path.posix.join(directory, `.${path.posix.basename(target)}.chj-${crypto.randomBytes(6).toString("hex")}.tmp`);
-    return this._withSftp(sessionId, async (sftp) => {
-      try {
-        const attrs = await call(sftp, "stat", target);
-        if (typeof attrs?.isDirectory === "function" && attrs.isDirectory()) throw new Error("A directory cannot be saved in the text editor.");
-        const existingMode = Number(attrs?.mode) & 0o777;
-        await call(sftp, "writeFile", temporary, data, { mode: existingMode || 0o600 });
-        await call(sftp, "rename", temporary, target);
-      } catch (error) {
-        try { await call(sftp, "unlink", temporary); } catch {}
-        throw error;
-      }
-      this.logger?.warn("Remote text file saved atomically.", { sessionId, path: target, bytes: data.length });
-      return { path: target, size: data.length };
-    });
+  async _recovery(sessionId, operation, recoveryId, options = {}) {
+    const request = { operation, id: recoveryId };
+    if (options.sudo === true) {
+      const identity = await this.sessionManager.remoteEditor(sessionId, { operation: "identity" });
+      request.uid = identity.uid;
+    }
+    return this.sessionManager.remoteEditor(sessionId, request, options);
+  }
+
+  listRecovery(sessionId, options = {}) {
+    return this._recovery(sessionId, "list", undefined, options);
+  }
+
+  async readRecovery(sessionId, recoveryId, options = {}) {
+    const result = await this._recovery(sessionId, "inspect", recoveryId, options);
+    const data = Buffer.from(result.data, "base64");
+    if (!result.complete || data.length > MAX_TEXT_BYTES || crypto.createHash("sha256").update(data).digest("hex") !== result.hash) {
+      throw new Error("FILE_RECOVERY_UNVERIFIED: Recovery content could not be verified.");
+    }
+    let text;
+    try { text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(data); }
+    catch { throw new Error("Recovery file is not valid UTF-8 text."); }
+    const { data: _data, ...summary } = result;
+    return { ...summary, text };
+  }
+
+  cleanupRecovery(sessionId, recoveryId, options = {}) {
+    return this._recovery(sessionId, "cleanup", recoveryId, options);
+  }
+
+  closeText(editId, owner = "core") {
+    const edit = this.edits.get(editId);
+    if (!edit || edit.owner !== owner || edit.busy) return { closed: false };
+    this.edits.delete(editId);
+    const key = JSON.stringify([owner, edit.identity, edit.target]);
+    const remaining = [...this.edits].filter(([, other]) => other.owner === owner && other.identity === edit.identity && other.target === edit.target);
+    if (!remaining.length) this.legacyEdits.delete(key);
+    else this.legacyEdits.set(key, remaining.length === 1 ? remaining[0][0] : null);
+    return { closed: true };
+  }
+
+  cleanupPlugin(owner) {
+    for (const [id, edit] of this.edits) {
+      if (edit.owner !== owner) continue;
+      if (edit.busy) edit.dispose = true;
+      else this.closeText(id, owner);
+    }
   }
 
   async createFile(sessionId, remotePath) {

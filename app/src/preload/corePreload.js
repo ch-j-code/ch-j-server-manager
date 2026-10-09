@@ -11,6 +11,18 @@ function subscribe(channel, callback) {
 
 contextBridge.exposeInMainWorld("chjCore", Object.freeze({
   platform: process.platform,
+  diagnostics: Object.freeze({
+    resolve: (options) => ipcRenderer.invoke("diagnostics:resolve", options),
+    start: (options) => ipcRenderer.invoke("diagnostics:start", options),
+    cancel: (id, tool) => ipcRenderer.invoke("diagnostics:cancel", { id, tool }),
+    get: (id) => ipcRenderer.invoke("diagnostics:get", { id }),
+    history: () => ipcRenderer.invoke("diagnostics:history"),
+    removeHistory: (id) => ipcRenderer.invoke("diagnostics:removeHistory", { id }),
+    export: (id, format) => ipcRenderer.invoke("diagnostics:export", { id, format }),
+    copy: (id, format = "txt") => ipcRenderer.invoke("diagnostics:copy", { id, format }),
+    import: () => ipcRenderer.invoke("diagnostics:import"),
+    onProgress: (callback) => subscribe("diagnostics:progress", callback)
+  }),
   getInfo: () => ipcRenderer.invoke("core:getInfo"),
   openLegalDocument: (document) => ipcRenderer.invoke("legal:open", { document }),
   getConfig: () => ipcRenderer.invoke("config:get"),

@@ -10,8 +10,8 @@ const PRIVATE_KEY_DIALOG_COPY = Object.freeze({
 
 function registerCoreIpc(options) {
   const {
-    ipcMain, shell, dialog, app, configStore, pluginRegistry, pluginService, pluginRuntime, profileService,
-    sessionManager, vaultStore, updateService, updateInstallerLauncher, getMainWindow, logger
+    ipcMain, shell, dialog, clipboard, app, configStore, pluginRegistry, pluginService, pluginRuntime, profileService,
+    sessionManager, vaultStore, updateService, updateInstallerLauncher, diagnosticsService, getMainWindow, logger
   } = options;
 
   function assertTrustedSender(event) {
@@ -139,6 +139,35 @@ function registerCoreIpc(options) {
     return { canceled: result.canceled, path: result.filePaths[0] || null };
   });
   handle("ssh:list", async () => sessionManager.list());
+  const diagnosticsResult = (action) => async (payload = {}) => {
+    try { return { ok: true, value: await action(payload) }; }
+    catch (error) { return { ok: false, error: { code: error.code || "DIAGNOSTICS_ERROR", message: String(error.message || error).slice(0, 400) } }; }
+  };
+  handle("diagnostics:resolve", diagnosticsResult((payload) => diagnosticsService.resolve(payload)));
+  handle("diagnostics:start", diagnosticsResult((payload) => diagnosticsService.start(payload)));
+  handle("diagnostics:cancel", diagnosticsResult((payload) => diagnosticsService.cancel(payload.id, payload.tool)));
+  handle("diagnostics:get", diagnosticsResult((payload) => diagnosticsService.get(payload.id)));
+  handle("diagnostics:history", diagnosticsResult(() => diagnosticsService.history.list()));
+  handle("diagnostics:removeHistory", diagnosticsResult((payload) => diagnosticsService.history.remove(payload.id)));
+  handle("diagnostics:copy", diagnosticsResult((payload) => {
+    clipboard.writeText(diagnosticsService.export(payload.id, payload.format || "txt"));
+    return { copied: true };
+  }));
+  handle("diagnostics:export", diagnosticsResult(async (payload) => {
+    const content = diagnosticsService.export(payload.id, payload.format);
+    const result = await dialog.showSaveDialog(getMainWindow(), { defaultPath: `diagnostics.${payload.format}`, filters: [{ name: payload.format.toUpperCase(), extensions: [payload.format] }] });
+    if (result.canceled || !result.filePath) return { canceled: true };
+    await require("node:fs").promises.writeFile(result.filePath, content, { mode: 0o600 });
+    return { canceled: false };
+  }));
+  handle("diagnostics:import", diagnosticsResult(async () => {
+    const result = await dialog.showOpenDialog(getMainWindow(), { properties: ["openFile"], filters: [{ name: "Diagnostics JSON", extensions: ["json"] }] });
+    if (result.canceled || !result.filePaths[0]) return { canceled: true };
+    const fs = require("node:fs"); const stat = await fs.promises.lstat(result.filePaths[0]);
+    if (!stat.isFile() || stat.size > 2 * 1024 * 1024) throw Object.assign(new Error("IMPORT_LIMIT"), { code: "IMPORT_LIMIT" });
+    const id = diagnosticsService.history.import(await fs.promises.readFile(result.filePaths[0], "utf8"));
+    return { id };
+  }));
   handle("ssh:connect", sessionResult((payload) => sessionManager.connect(payload)));
   handle("ssh:trustHostKey", sessionResult((payload) => sessionManager.trustPending(payload)));
   handle("ssh:disconnect", sessionResult((payload) => sessionManager.disconnect(payload.sessionId, "user")));

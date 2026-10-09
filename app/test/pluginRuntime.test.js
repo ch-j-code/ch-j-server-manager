@@ -162,7 +162,31 @@ test("plugin runtime routes file capabilities and keeps permissions separate", a
   assert.deepEqual(await handlers.get("plugin:files:readText")(event, { sessionId: "sftp-1", path: "/home/test/a.txt" }), { text: "ahoj" });
   await assert.rejects(() => handlers.get("plugin:files:writeText")(event, { sessionId: "sftp-1", path: "/home/test/a.txt", text: "nově" }), { code: "PLUGIN_PERMISSION_DENIED" });
   await assert.rejects(() => handlers.get("plugin:files:download")(event, { sessionId: "sftp-1", path: "/home/test/a.txt" }), { code: "PLUGIN_PERMISSION_DENIED" });
+  for (const capability of ["saveText", "cleanupRecovery"]) {
+    await assert.rejects(() => handlers.get(`plugin:files:${capability}`)(event, { sessionId: "sftp-1" }), { code: "PLUGIN_PERMISSION_DENIED" });
+  }
   assert.deepEqual(calls, [["list", "sftp-1", "/home/test"], ["readText", "sftp-1", "/home/test/a.txt"]]);
+});
+
+test("editor IPC forwards structured options, owns document handles and protects recovery reads", async () => {
+  const handlers = new Map(), calls = [];
+  const remoteFileService = {};
+  for (const method of ["readText", "saveText", "listRecovery", "readRecovery", "cleanupRecovery", "closeText"]) {
+    remoteFileService[method] = (...args) => { calls.push([method, ...args]); return { ok: true }; };
+  }
+  const runtime = new PluginRuntime({ BrowserWindow: FakeWindow, registry: {}, remoteFileService, isVaultUnlocked: () => true });
+  runtime.registerIpc({ handle: (channel, handler) => handlers.set(channel, handler) });
+  const window = { isDestroyed: () => false };
+  runtime.contexts.set(91, { manifest: { id: "editor", permissions: ["files.read", "files.write"] }, window });
+  runtime.contexts.set(92, { manifest: { id: "other", permissions: [] }, window });
+  const options = { editId: "opaque", sudo: true, sudoPassword: "secret" };
+  await handlers.get("plugin:files:saveText")({ sender: { id: 91 } }, { sessionId: "s", path: "/etc/config", text: "content", options });
+  assert.deepEqual(calls[0], ["saveText", "s", "/etc/config", "content", options, "editor"]);
+  await handlers.get("plugin:files:closeText")({ sender: { id: 91 } }, { editId: "opaque" });
+  assert.deepEqual(calls[1], ["closeText", "opaque", "editor"]);
+  for (const method of ["listRecovery", "readRecovery", "closeText"]) {
+    await assert.rejects(() => handlers.get(`plugin:files:${method}`)({ sender: { id: 92 } }), { code: "PLUGIN_PERMISSION_DENIED" });
+  }
 });
 
 test("plugin runtime separates NGINX read and manage capabilities", async () => {

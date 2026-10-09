@@ -1,2 +1,7 @@
 [extend]
 useDefault = true
+
+# Deliberately public local TLS fixture; the signing CA private key was discarded.
+[[allowlists]]
+description = "Public Server Diagnostics TLS test key; never used by an external service"
+paths = ['''(^|/)app/test/fixtures/diagnostics/server-key\.pem$''']

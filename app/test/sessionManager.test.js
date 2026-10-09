@@ -46,7 +46,7 @@ test("session manager requires host-key trust before opening a shell", async () 
     trustHostKey: (_host, _port, value) => { knownFingerprint = value; return { fingerprint: value }; },
     markUsed: () => {}
   };
-  const manager = new SessionManager({
+  const manager = new SessionManager({ latencyMonitor: { start: () => () => {} },
     profileService,
     lookupHost,
     clientFactory: () => { latestClient = new FakeClient(fingerprint); return latestClient; }
@@ -75,7 +75,7 @@ test("session manager uses the encrypted stored password when no temporary passw
   const fingerprint = "ab".repeat(32);
   let client;
   const profile = { id: "profile-1", label: "Saved", host: "server.local", port: 22, username: "root", authMethod: "password" };
-  const manager = new SessionManager({
+  const manager = new SessionManager({ latencyMonitor: { start: () => () => {} },
     profileService: {
       get: () => profile,
       getHostKey: () => fingerprint,
@@ -101,7 +101,7 @@ test("session manager replaces a changed host key only after explicit confirmati
     trustHostKey: (_host, _port, value) => { knownFingerprint = value; return { fingerprint: value }; },
     markUsed: () => {}
   };
-  const manager = new SessionManager({ profileService, lookupHost, clientFactory: () => new FakeClient(changed) });
+  const manager = new SessionManager({ latencyMonitor: { start: () => () => {} }, profileService, lookupHost, clientFactory: () => new FakeClient(changed) });
 
   await assert.rejects(
     () => manager.connect({ sessionId: "terminal-1", profileId: profile.id, password: "secret" }),
@@ -131,7 +131,7 @@ test("session manager resolves DNS names, prefers IPv4 and reports missing DNS r
     getStoredPassword: () => null,
     markUsed: () => {}
   };
-  const manager = new SessionManager({
+  const manager = new SessionManager({ latencyMonitor: { start: () => () => {} },
     profileService,
     lookupHost: async () => [{ address: "2001:db8::10", family: 6 }, { address: "192.0.2.10", family: 4 }],
     clientFactory: () => { client = new FakeClient(fingerprint); return client; }
@@ -140,7 +140,7 @@ test("session manager resolves DNS names, prefers IPv4 and reports missing DNS r
   assert.equal(client.config.host, "192.0.2.10");
   await manager.disconnect("terminal-dns");
 
-  const fallback = new SessionManager({
+  const fallback = new SessionManager({ latencyMonitor: { start: () => () => {} },
     profileService,
     lookupHost: async () => { const error = new Error("system resolver failed"); error.code = "ENOTFOUND"; throw error; },
     resolve4: async () => ["198.51.100.20"],
@@ -152,7 +152,7 @@ test("session manager resolves DNS names, prefers IPv4 and reports missing DNS r
   await fallback.disconnect("terminal-fallback");
 
   const notFound = async () => { const error = new Error("not found"); error.code = "ENOTFOUND"; throw error; };
-  const missing = new SessionManager({ profileService, lookupHost: notFound, resolve4: notFound, resolve6: notFound });
+  const missing = new SessionManager({ latencyMonitor: { start: () => () => {} }, profileService, lookupHost: notFound, resolve4: notFound, resolve6: notFound });
   await assert.rejects(() => missing.connect({ sessionId: "terminal-missing", profileId: profile.id, password: "secret" }), {
     code: "SSH_DNS_RESOLUTION_FAILED",
     host: profile.host
@@ -160,7 +160,7 @@ test("session manager resolves DNS names, prefers IPv4 and reports missing DNS r
 });
 
 test("system metrics use a fixed command on an existing SSH session", async () => {
-  const manager = new SessionManager({ profileService: {} });
+  const manager = new SessionManager({ latencyMonitor: { start: () => () => {} }, profileService: {} });
   const stream = new EventEmitter();
   stream.stderr = new EventEmitter();
   const client = {
@@ -215,7 +215,7 @@ test("legacy system metrics remain compatible without CPU and network fields", (
 });
 
 test("user capability parses accounts and allows only bounded sudo actions", async () => {
-  const manager = new SessionManager({ profileService: {} });
+  const manager = new SessionManager({ latencyMonitor: { start: () => () => {} }, profileService: {} });
   const commands = [];
   const inputs = [];
   const usersOutput = [
@@ -262,7 +262,7 @@ test("NGINX capability restricts paths, validates before reload and hides config
   assert.equal(parsed.installed, true);
   assert.deepEqual(parsed.configs.map((item) => [item.path, item.writable]), [["/etc/nginx/nginx.conf", true], ["/etc/nginx/sites-enabled/default", false]]);
 
-  const manager = new SessionManager({ profileService: {} });
+  const manager = new SessionManager({ latencyMonitor: { start: () => () => {} }, profileService: {} });
   const commands = [];
   const inputs = [];
   const client = {
@@ -304,7 +304,7 @@ test("NGINX capability restricts paths, validates before reload and hides config
 });
 
 test("privileged bounded operations run directly in an authenticated root SSH session", async () => {
-  const manager = new SessionManager({ profileService: {} });
+  const manager = new SessionManager({ latencyMonitor: { start: () => () => {} }, profileService: {} });
   const commands = [];
   const client = { exec(command, callback) {
     commands.push(command);
