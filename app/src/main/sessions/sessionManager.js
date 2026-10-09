@@ -393,6 +393,7 @@ class SessionManager extends EventEmitter {
             ...hostKeyIssue
           })
           : this._normalizeConnectionError(error, record);
+        this.logger?.warn("SSH connection failed.", { sessionId, code: normalized.code, message: normalized.message, address: record.address, port: record.port });
         this._finalize(record, normalized.code);
         reject(normalized);
       };
@@ -707,7 +708,9 @@ class SessionManager extends EventEmitter {
   _normalizeConnectionError(error, record) {
     const message = error?.message || String(error || "SSH connection failed.");
     let code = "SSH_CONNECTION_FAILED";
-    if (error?.code === "ENOTFOUND" || error?.code === "EAI_AGAIN" || /getaddrinfo|name or service not known|nodename nor servname/i.test(message)) code = "SSH_DNS_RESOLUTION_FAILED";
+    if (process.platform === "darwin" && ["EPERM", "EACCES"].includes(error?.code)) code = "SSH_LOCAL_NETWORK_DENIED";
+    else if (process.platform === "darwin" && ["EHOSTUNREACH", "ENETUNREACH"].includes(error?.code)) code = "SSH_MAC_NETWORK_UNREACHABLE";
+    else if (error?.code === "ENOTFOUND" || error?.code === "EAI_AGAIN" || /getaddrinfo|name or service not known|nodename nor servname/i.test(message)) code = "SSH_DNS_RESOLUTION_FAILED";
     else if (/authentication/i.test(message)) code = "SSH_AUTHENTICATION_FAILED";
     else if (/timed?\s*out/i.test(message)) code = "SSH_TIMEOUT";
     else if (/refused/i.test(message)) code = "SSH_CONNECTION_REFUSED";

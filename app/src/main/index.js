@@ -19,6 +19,9 @@ const { KeyGeneratorService } = require("./keys/keyGeneratorService");
 const { ProfileService } = require("./profiles/profileService");
 const { createTestHttpsFetch } = require("./security/testHttpsFetch");
 const { VaultStore } = require("./security/vaultStore");
+const { BiometricService } = require("./security/biometrics/biometricService");
+const { PlatformAdapter } = require("./security/biometrics/platformAdapter");
+const { VaultLockController } = require("./security/vaultLockController");
 const { SessionManager } = require("./sessions/sessionManager");
 const { HashUrlProvider } = require("./updates/hashUrlProvider");
 const { OpenPgpVerifier } = require("./updates/openPgpVerifier");
@@ -29,6 +32,10 @@ const buildInfo = require("../shared/buildInfo.json");
 app.setName("CH-J Server Manager");
 const buildSmokeUserData = process.env.CHJ_BUILD_SMOKE_USER_DATA_DIR;
 if (buildSmokeUserData && path.isAbsolute(buildSmokeUserData)) app.setPath("userData", buildSmokeUserData);
+if (process.platform === "linux") {
+  app.setDesktopName("ch-j-server-manager.desktop");
+  app.commandLine.appendSwitch("class", "ch-j-server-manager");
+}
 if (process.platform === "win32") app.setAppUserModelId("de.ch-j.servermanager");
 protocol.registerSchemesAsPrivileged([{ scheme: "chj-plugin", privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 
@@ -38,6 +45,22 @@ let updateService = null;
 let sessionManager = null;
 let vaultStore = null;
 let diagnosticsService = null;
+let biometricService = null;
+let vaultLockController = null;
+
+function watchWindow(window) {
+  window.webContents.on("before-input-event", () => vaultLockController?.activity());
+  window.webContents.on("before-mouse-event", () => vaultLockController?.activity());
+  window.on("blur", () => {
+    const checkFocus = () => {
+      if (BrowserWindow.getFocusedWindow()) return;
+      if (biometricService?.active) { setTimeout(checkFocus, 250).unref(); return; }
+      void vaultLockController?.lostFocus().catch(error => logger?.warn("Vault focus lock failed.", { message: error.message }));
+    };
+    setTimeout(checkFocus, 250).unref();
+  });
+  window.on("closed", () => { if (window === mainWindow) diagnosticsService?.stopAll(); });
+}
 
 const hasSingleInstanceLock = buildSmokeUserData ? true : app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) app.quit();
@@ -190,6 +213,15 @@ async function bootstrap() {
 
   hardenSession(logger);
   mainWindow = createMainWindow({ logger, icon: appIcon });
+  biometricService = new BiometricService({ storageRoot, vaultStore, configStore, adapter: new PlatformAdapter({
+    resourcesPath: process.resourcesPath, appPath: app.getAppPath(), isPackaged: app.isPackaged, getMainWindow: () => mainWindow
+  }) });
+  vaultLockController = new VaultLockController({ vaultStore, configStore, biometricService, sessionManager, pluginRuntime, diagnosticsService });
+  app.on("browser-window-created", (_event, window) => watchWindow(window));
+  watchWindow(mainWindow);
+  vaultLockController.on("locked", payload => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("vault:locked", payload);
+  });
   registerCoreIpc({
     ipcMain,
     clipboard,
@@ -204,6 +236,8 @@ async function bootstrap() {
     profileService,
     sessionManager,
     vaultStore,
+    biometricService,
+    vaultLockController,
     updateService,
     updateInstallerLauncher,
     diagnosticsService,
@@ -218,7 +252,6 @@ async function bootstrap() {
   sessionManager.on("state", (payload) => sendToRenderer("ssh:state", payload));
   sessionManager.on("sessionError", (payload) => sendToRenderer("ssh:error", payload));
   diagnosticsService.on("progress", (payload) => sendToRenderer("diagnostics:progress", payload));
-  mainWindow.on("closed", () => diagnosticsService.stopAll());
 
   mainWindow.webContents.once("did-finish-load", () => {
     const config = configStore.get();
@@ -251,8 +284,7 @@ app.whenReady().then(bootstrap).catch((error) => {
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    mainWindow = createMainWindow({ logger });
-    mainWindow.on("closed", () => diagnosticsService?.stopAll());
+    mainWindow = createMainWindow({ logger, icon: path.join(__dirname, "..", "..", "build", "icon.png") });
   } else {
     focusMainWindow();
   }
@@ -263,6 +295,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  vaultLockController?.dispose();
   diagnosticsService?.stopAll();
   void sessionManager?.disconnectAll("app-quit");
   vaultStore?.lock();

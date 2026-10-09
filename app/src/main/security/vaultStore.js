@@ -54,6 +54,7 @@ class VaultStore {
     this.dataPath = path.join(this.rootDir, "core-v1.data.json");
     this.key = null;
     this.data = null;
+    this.generation = 0;
   }
 
   status() {
@@ -69,12 +70,14 @@ class VaultStore {
   }
 
   async create(password) {
+    const generation = this.generation;
     const status = this.status();
     if (status.initialized) throw new Error("Vault is already initialized.");
     if (status.damaged) throw new Error("Vault files are incomplete. Restore or remove them before setup.");
     const normalized = validatePassword(password);
     const salt = crypto.randomBytes(SALT_LENGTH);
     const key = await this._deriveKey(normalized, salt);
+    if (generation !== this.generation || !this.status().needsSetup) { key.fill(0); throw new Error("Vault operation cancelled."); }
     const data = initialVault();
     const now = new Date().toISOString();
     try {
@@ -99,6 +102,7 @@ class VaultStore {
   }
 
   async unlock(password) {
+    const generation = this.generation, instance = this.instanceId();
     if (!this.status().initialized) throw new Error("Vault setup is required or its files are incomplete.");
     const normalized = validatePassword(password);
     let key;
@@ -110,6 +114,7 @@ class VaultStore {
       const salt = Buffer.from(String(meta.salt || ""), "base64");
       if (salt.length !== SALT_LENGTH) throw new Error("Vault salt is invalid.");
       key = await this._deriveKey(normalized, salt, meta.kdf);
+      if (generation !== this.generation || instance !== this.instanceId()) throw new Error("Vault operation cancelled.");
       const data = this._readEncryptedData(key);
       this._setSession(key, data);
       return this.status();
@@ -121,7 +126,50 @@ class VaultStore {
     }
   }
 
+  // Main-process-only key operations. No IPC route exposes these buffers.
+  instanceId() {
+    if (!this.status().initialized) return null;
+    const meta = JSON.parse(fs.readFileSync(this.metaPath, "utf8"));
+    return crypto.createHash("sha256").update(JSON.stringify([meta.formatVersion, meta.createdAt, meta.salt])).digest("hex");
+  }
+
+  async withUnlockKey(operation) {
+    this._assertUnlocked();
+    const copy = Buffer.from(this.key);
+    try { return await operation(copy); } finally { copy.fill(0); }
+  }
+
+  async verifyPassword(password) {
+    this._assertUnlocked();
+    const generation = this.generation;
+    const meta = JSON.parse(fs.readFileSync(this.metaPath, "utf8"));
+    const key = await this._deriveKey(validatePassword(password), Buffer.from(meta.salt, "base64"), meta.kdf);
+    try {
+      this._assertUnlocked();
+      if (generation !== this.generation) throw Object.assign(new Error("Master password required."), { code: "BIOMETRIC_MASTER_PASSWORD_REQUIRED" });
+      if (!crypto.timingSafeEqual(key, this.key)) throw Object.assign(new Error("Master password required."), { code: "BIOMETRIC_MASTER_PASSWORD_REQUIRED" });
+      this._readEncryptedData(key);
+      return true;
+    } finally { key.fill(0); }
+  }
+
+  unlockWithKey(key) {
+    if (!this.status().initialized || !Buffer.isBuffer(key) || key.length !== KEY_LENGTH) {
+      throw Object.assign(new Error("Invalid protected unlocking key."), { code: "BIOMETRIC_INVALID_KEY" });
+    }
+    const copy = Buffer.from(key);
+    try {
+      const data = this._readEncryptedData(copy); // AES-GCM authentication must succeed first.
+      this._setSession(copy, data);
+      return this.status();
+    } catch (_) {
+      copy.fill(0);
+      throw Object.assign(new Error("Biometric enrollment is no longer valid. Use the master password."), { code: "BIOMETRIC_ENROLLMENT_INVALIDATED" });
+    }
+  }
+
   lock() {
+    this.generation++;
     if (Buffer.isBuffer(this.key)) this.key.fill(0);
     this.key = null;
     this.data = null;

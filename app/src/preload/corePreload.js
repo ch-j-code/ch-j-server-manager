@@ -9,6 +9,12 @@ function subscribe(channel, callback) {
   return () => ipcRenderer.removeListener(channel, listener);
 }
 
+async function biometricRequest(channel) {
+  const result = await ipcRenderer.invoke(channel);
+  if (!result.ok) throw Object.assign(new Error(result.error.message), { code: result.error.code });
+  return result.value;
+}
+
 contextBridge.exposeInMainWorld("chjCore", Object.freeze({
   platform: process.platform,
   diagnostics: Object.freeze({
@@ -39,6 +45,12 @@ contextBridge.exposeInMainWorld("chjCore", Object.freeze({
   unlockVault: (password) => ipcRenderer.invoke("vault:unlock", { password }),
   lockVault: () => ipcRenderer.invoke("vault:lock"),
   resetVault: (confirmation) => ipcRenderer.invoke("vault:reset", { confirmation }),
+  getBiometricStatus: () => biometricRequest("biometrics:status"),
+  enableBiometrics: () => biometricRequest("biometrics:enable"),
+  disableBiometrics: () => biometricRequest("biometrics:disable"),
+  unlockVaultWithBiometrics: () => biometricRequest("biometrics:unlock"),
+  authenticateSensitiveAction: () => biometricRequest("biometrics:authenticate"),
+  onVaultLocked: (callback) => subscribe("vault:locked", callback),
   listProfiles: () => ipcRenderer.invoke("profiles:list"),
   saveProfile: (payload) => ipcRenderer.invoke("profiles:save", payload),
   deleteProfile: (id) => ipcRenderer.invoke("profiles:delete", { id }),

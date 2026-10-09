@@ -102,3 +102,7 @@ main { padding: 0 38px 82px; overflow: auto; }
 .connection-status { display: flex; align-items: flex-end; flex-direction: column; gap: 6px; min-width: 0; }
 .terminal-latency { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
 .terminal-latency[hidden] { display: none; }
+
+.security-panel { margin-top: 24px; }
+.security-panel p { color: var(--muted); line-height: 1.5; margin: 0; }
+.security-panel .button-row { flex-wrap: wrap; }

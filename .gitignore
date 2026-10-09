@@ -61,3 +61,6 @@ app/test/wikiPortal.test.js
 !/app/test/fixtures/diagnostics/server.pem
 !/app/test/fixtures/diagnostics/expired.pem
 !/app/test/fixtures/diagnostics/server-key.pem
+
+# Native biometric helpers are compiled per platform.
+app/build/biometrics/

@@ -25,6 +25,7 @@
       <label id="vaultConfirmLabel" hidden><span data-i18n="vault.confirmPassword">Potvrzení hesla</span><input id="vaultPasswordConfirm" type="password" autocomplete="new-password"></label>
       <p id="vaultMessage" class="form-message" aria-live="polite"></p>
       <button id="vaultSubmit" class="button primary wide" type="submit" data-i18n="vault.unlock">Odemknout</button>
+      <button id="biometricUnlockButton" class="button wide" type="button" hidden></button>
       <button id="showVaultResetButton" class="button ghost wide vault-reset-link" type="button" hidden data-i18n="vault.forgot">Zapomenuté heslo / obnovit vault</button>
       <div id="vaultResetPanel" class="vault-reset-panel" hidden>
         <strong data-i18n="vault.resetIrreversible">Obnovení nelze vrátit zpět</strong>
@@ -159,6 +160,24 @@
           <label class="check-label"><input id="autoCheckInput" type="checkbox"><span data-i18n="settings.autoCheck">Automaticky kontrolovat při startu</span></label>
           <div class="field"><span data-i18n="settings.allowedServers">Povolené update servery</span><code id="baseUrlsText"></code></div>
           <div class="button-row"><button class="button primary" type="submit" data-i18n="settings.save">Uložit nastavení</button><span id="settingsStatus"></span></div>
+        </form>
+        <form id="securityForm" class="panel settings-panel security-panel">
+          <h3 data-i18n="security.title">Zabezpečení</h3>
+          <p id="biometricStatus" aria-live="polite"></p>
+          <p id="biometricProtection"></p>
+          <div class="button-row">
+            <button id="enableBiometricsButton" class="button" type="button" data-i18n="security.enable">Zapnout biometrické odemykání</button>
+            <button id="disableBiometricsButton" class="button" type="button" data-i18n="security.remove">Vypnout a odstranit registraci</button>
+            <button id="testBiometricsButton" class="button" type="button" data-i18n="security.test">Otestovat systémové ověření</button>
+          </div>
+          <label class="check-label"><input id="autoLockEnabled" type="checkbox"><span data-i18n="security.autoLock">Automaticky zamknout při nečinnosti</span></label>
+          <label><span data-i18n="security.timeout">Doba nečinnosti</span><select id="autoLockMinutes"><option value="0" data-i18n="security.never">Nikdy</option><option value="1">1 min</option><option value="5">5 min</option><option value="10">10 min</option><option value="15">15 min</option><option value="30">30 min</option><option value="60">60 min</option></select></label>
+          <label class="check-label"><input id="lockOnBlur" type="checkbox"><span data-i18n="security.blur">Zamknout při ztrátě zaměření aplikace</span></label>
+          <label class="check-label"><input id="requireSystemAuthentication" type="checkbox"><span data-i18n="security.sensitive">Vyžadovat systémové ověření citlivých operací</span></label>
+          <p data-i18n="security.scope">Ověření chrání odstranění profilu, instalaci/odstranění pluginu, spuštění instalátoru a reset odemčeného Vaultu. Příkazy vzdáleného terminálu tímto ověřením chráněny nejsou.</p>
+          <p data-i18n="security.lockEffect">Zamknutí ukončí aktivní SSH relace, zavře pluginy a zastaví diagnostiku.</p>
+          <label><span data-i18n="security.confirmPassword">Hlavní heslo pro změnu pravidel zamykání</span><input id="securityMasterPassword" type="password" autocomplete="current-password" required></label>
+          <div class="button-row"><button class="button primary" type="submit" data-i18n="settings.save">Uložit nastavení</button><span id="securityMessage" aria-live="polite"></span></div>
         </form>
         <article class="panel legal-panel">
           <div><span class="eyebrow" data-i18n="legal.eyebrow">PRÁVNÍ INFORMACE</span><h3 data-i18n="legal.title">Licence a oznámení</h3><p data-i18n="legal.description">CH-J Server Manager je poskytován pod Apache License 2.0. Licence komponent třetích stran zůstávají zachované.</p><small>Copyright © 2026 Josef Chudy · SPDX-License-Identifier: Apache-2.0</small></div>

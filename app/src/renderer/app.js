@@ -60,7 +60,26 @@ let terminal = null;
 let fitAddon = null;
 
 function errorText(error) {
+  const code = error?.code || String(error?.message || "").match(/BIOMETRIC_[A-Z_]+/)?.[0];
+  if (code?.startsWith("BIOMETRIC_")) return t(`biometrics.${code}`);
+  if (["SSH_LOCAL_NETWORK_DENIED", "SSH_MAC_NETWORK_UNREACHABLE"].includes(code)) return `${t(`ssh.${code}`)}\n${error.message || ""}`;
   return error?.message || String(error || t("errors.unknown"));
+}
+
+let biometricStatus = null;
+function renderBiometrics() {
+  const status = biometricStatus;
+  $("#biometricUnlockButton").hidden = !status?.enabled || !status.available || state.vault?.unlocked || !state.vault?.initialized;
+  $("#biometricUnlockButton").textContent = t(`biometrics.${status?.provider || "touch-id"}`);
+  $("#biometricStatus").textContent = status ? `${status.provider}: ${t(`biometrics.${status.code}`)} · ${t(status.enabled ? "security.enabled" : "security.disabled")}` : "";
+  $("#biometricProtection").textContent = status ? t(status.protection === "biometry-current-set" ? "security.strong" : "security.convenience") : "";
+  $("#enableBiometricsButton").disabled = !state.vault?.unlocked || !status?.available || status.enabled;
+  $("#disableBiometricsButton").disabled = !state.vault?.unlocked || !status?.enrolled;
+  $("#testBiometricsButton").disabled = !state.vault?.unlocked || !status?.available;
+}
+async function refreshBiometrics() {
+  try { biometricStatus = await api.getBiometricStatus(); renderBiometrics(); }
+  catch (error) { $("#securityMessage").textContent = errorText(error); }
 }
 
 function showView(name) {
@@ -98,6 +117,7 @@ function applyLanguage(language) {
   diagnosticsView?.refreshLanguage();
   renderTerminalProfileSelect();
   if (state.vault) configureVault(state.vault);
+  renderBiometrics();
   const terminalStateKeys = { disconnected: "terminal.disconnected", connecting: "terminal.connecting", connected: "terminal.connected", error: "terminal.connectionError" };
   setTerminalState(state.terminalStateKind, t(terminalStateKeys[state.terminalStateKind] || "terminal.disconnected"));
   return selected;
@@ -279,6 +299,8 @@ function renderPluginCatalog() {
 
 function configureVault(status) {
   state.vault = status;
+  renderBiometrics();
+  $("#securityMasterPassword").value = "";
   elements.vaultOverlay.hidden = Boolean(status.unlocked);
   elements.vaultMessage.className = "form-message";
   elements.vaultMessage.textContent = "";
@@ -508,7 +530,7 @@ async function connectTerminal(retry = false) {
       terminal?.writeln(`\r\n\x1b[31m${trusted.error?.message || t("ssh.trustFailed")}\x1b[0m`);
     }
   } else {
-    terminal?.writeln(`\r\n\x1b[31m${issue.message}\x1b[0m`);
+    terminal?.writeln(`\r\n\x1b[31m${errorText(issue)}\x1b[0m`);
   }
   state.terminalConnected = false;
   setTerminalState("error", t("terminal.connectionError"));
@@ -548,11 +570,18 @@ async function initialize() {
   elements.autoCheckInput.checked = state.config.updates.autoCheck;
   elements.baseUrlsText.textContent = state.config.updates.baseUrls.join("\n");
   elements.updateChannel.textContent = t("updates.channel", { channel: state.config.updates.channel });
+  const security = state.config.security;
+  $("#autoLockEnabled").checked = security.autoLockMinutes > 0;
+  $("#autoLockMinutes").value = String(security.autoLockMinutes || 15);
+  $("#autoLockMinutes").disabled = !security.autoLockMinutes;
+  $("#lockOnBlur").checked = security.lockOnBlur;
+  $("#requireSystemAuthentication").checked = security.requireSystemAuthentication;
   diagnosticsView = window.CHJ_DIAGNOSTICS.mount($("#diagnosticsView"), {
     api: api.diagnostics, language: () => i18n.getLanguage(), getTheme: () => state.config.ui.theme,
     setTheme: async (theme) => { state.config = await api.updateConfig({ ui: { theme } }); }
   });
   renderPlugins(); renderUpdate(state.update); initTerminal(); configureVault(state.vault);
+  void refreshBiometrics();
   if (state.vault.unlocked) await loadProfiles();
 }
 
@@ -579,6 +608,39 @@ elements.lockVaultButton.addEventListener("click", async () => {
   configureVault(await api.lockVault());
   clearProtectedUi();
   terminal?.writeln(`${t("terminal.vaultLocked")}\r\n`);
+});
+$("#biometricUnlockButton").addEventListener("click", async event => {
+  event.currentTarget.disabled = true;
+  try { configureVault(await api.unlockVaultWithBiometrics()); await loadProfiles(); }
+  catch (error) { elements.vaultMessage.textContent = errorText(error); }
+  finally { $("#biometricUnlockButton").disabled = false; void refreshBiometrics(); }
+});
+for (const [id, action, message] of [
+  ["enableBiometricsButton", () => api.enableBiometrics(), "security.enabled"],
+  ["disableBiometricsButton", () => api.disableBiometrics(), "security.disabled"],
+  ["testBiometricsButton", () => api.authenticateSensitiveAction(), "security.testPassed"]
+]) {
+  $("#" + id).addEventListener("click", async event => {
+    event.currentTarget.disabled = true;
+    try { await action(); $("#securityMessage").textContent = t(message); }
+    catch (error) { $("#securityMessage").textContent = errorText(error); }
+    finally { await refreshBiometrics(); }
+  });
+}
+$("#autoLockEnabled").addEventListener("change", event => {
+  $("#autoLockMinutes").disabled = !event.target.checked;
+  if (event.target.checked && $("#autoLockMinutes").value === "0") $("#autoLockMinutes").value = "15";
+});
+$("#securityForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const password = $("#securityMasterPassword").value; $("#securityMasterPassword").value = "";
+  try {
+    state.config = await api.updateConfig({ masterPassword: password, security: {
+      autoLockMinutes: $("#autoLockEnabled").checked ? Number($("#autoLockMinutes").value) : 0,
+      lockOnBlur: $("#lockOnBlur").checked, requireSystemAuthentication: $("#requireSystemAuthentication").checked
+    } });
+    $("#securityMessage").textContent = t("settings.saved");
+  } catch (error) { $("#securityMessage").textContent = errorText(error); }
 });
 elements.showVaultResetButton.addEventListener("click", () => {
   elements.vaultResetPanel.hidden = false;
@@ -717,7 +779,11 @@ api?.onSshState((payload) => {
   else if (payload.state === "connected") setTerminalState("connected", t("terminal.connected"));
   else setTerminalState("disconnected", t("terminal.disconnected"));
 });
-api?.onSshError((payload) => { if (payload.sessionId === TERMINAL_SESSION_ID) terminal?.writeln(`\r\n\x1b[31m${payload.message}\x1b[0m`); });
+api?.onSshError((payload) => { if (payload.sessionId === TERMINAL_SESSION_ID) terminal?.writeln(`\r\n\x1b[31m${errorText(payload)}\x1b[0m`); });
+api?.onVaultLocked(status => {
+  configureVault(status); clearProtectedUi(); void refreshBiometrics();
+  terminal?.writeln(`${t("terminal.vaultLocked")}\r\n`);
+});
 
 initialize().catch((error) => {
   elements.runtimeText.textContent = t("errors.initialization");

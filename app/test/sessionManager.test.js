@@ -317,3 +317,13 @@ test("privileged bounded operations run directly in an authenticated root SSH se
   assert.match(commands[0], /^sh -c /);
   assert.doesNotMatch(commands[0], /sudo/);
 });
+
+test("macOS route and permission errors retain details and get local-network guidance codes", () => {
+  const manager = new SessionManager({ profileService: {} });
+  const record = { sessionId: "test", profileId: "test", host: "192.168.10.138", port: 22 };
+  for (const [code, macCode] of [["EHOSTUNREACH", "SSH_MAC_NETWORK_UNREACHABLE"], ["ENETUNREACH", "SSH_MAC_NETWORK_UNREACHABLE"], ["EPERM", "SSH_LOCAL_NETWORK_DENIED"]]) {
+    const error = manager._normalizeConnectionError(Object.assign(new Error(`connect ${code} 192.168.10.138:22`), { code }), record);
+    assert.equal(error.code, process.platform === "darwin" ? macCode : "SSH_CONNECTION_FAILED");
+    assert.match(error.message, new RegExp(code)); assert.equal(error.host, record.host);
+  }
+});

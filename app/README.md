@@ -27,7 +27,13 @@ Alpha distribution notes:
 
 This release adds the integrated Server Diagnostics workspace (CS/DE/EN), reliable Monaco remote-file saves with recovery and conflict detection, and separate SSH RTT and ICMP measurements. Hash & Checksum, plugin windows and existing server profiles remain supported. See [remote editor and latency details](docs/remote-editor-latency.md) and [diagnostics capabilities and limits](docs/server-diagnostics.md).
 
-All platform packages use build ID `core-20261009T160026Z-b5497107`. Detached `.asc` signatures are produced with the CH-J signing subkey on a YubiKey; [SHA512SUMS](https://www.sm.ch-j.de/files/apps/builds/core-20261009T160026Z-b5497107/SHA512SUMS) and its [OpenPGP signature](https://www.sm.ch-j.de/files/apps/builds/core-20261009T160026Z-b5497107/SHA512SUMS.asc) cover all four artifacts.
+All platform packages use build ID `core-20261009T165008Z-d06eb073`. Detached `.asc` signatures are produced with the CH-J signing subkey on a YubiKey; [SHA512SUMS](https://www.sm.ch-j.de/files/apps/builds/core-20261009T165008Z-d06eb073/SHA512SUMS) and its [OpenPGP signature](https://www.sm.ch-j.de/files/apps/builds/core-20261009T165008Z-d06eb073/SHA512SUMS.asc) cover all four artifacts.
+
+## Vault security and platform fixes
+
+Optional Touch ID, Windows Hello (including PIN) and Ubuntu fingerprint unlock integrate with the existing encrypted Vault, with master-password fallback, CS/DE/EN settings, inactivity locking and optional focus locking. Windows and Linux provide convenience unlock; macOS uses biometric-gated Keychain access. **Locking disconnects SSH sessions and closes plugins.** Native hardware authentication still needs interactive verification. See [setup, dependencies, platform security differences and verification](docs/biometric-unlock.md).
+
+On macOS, `EHOSTUNREACH` for local SSH servers may require allowing **CH-J Server Manager** under **System Settings → Privacy & Security → Local Network**, then restarting the app. This build declares the usage reason and explains the error. Ubuntu packages include standard icon sizes and a matching desktop/window identity.
 
 ## Features
 

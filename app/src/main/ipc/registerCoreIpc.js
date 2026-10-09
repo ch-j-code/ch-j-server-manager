@@ -11,12 +11,13 @@ const PRIVATE_KEY_DIALOG_COPY = Object.freeze({
 function registerCoreIpc(options) {
   const {
     ipcMain, shell, dialog, clipboard, app, configStore, pluginRegistry, pluginService, pluginRuntime, profileService,
-    sessionManager, vaultStore, updateService, updateInstallerLauncher, diagnosticsService, getMainWindow, logger
+    sessionManager, vaultStore, biometricService, vaultLockController, updateService, updateInstallerLauncher, diagnosticsService, getMainWindow, logger
   } = options;
 
   function assertTrustedSender(event) {
     const mainWindow = getMainWindow();
-    if (!mainWindow || mainWindow.isDestroyed() || event.sender.id !== mainWindow.webContents.id) {
+    if (!mainWindow || mainWindow.isDestroyed() || event.sender.id !== mainWindow.webContents.id ||
+        (mainWindow.webContents.mainFrame && event.senderFrame !== mainWindow.webContents.mainFrame)) {
       const error = new Error("Untrusted IPC sender.");
       error.code = "UNTRUSTED_IPC_SENDER";
       throw error;
@@ -100,6 +101,12 @@ function registerCoreIpc(options) {
   });
   handle("config:get", async () => configStore.get());
   handle("config:update", async (payload = {}) => {
+    if (payload.security) {
+      await vaultStore.verifyPassword(payload.masterPassword);
+      if (payload.security.requireSystemAuthentication && !(await biometricService.getStatus()).available) {
+        throw new Error("BIOMETRIC_UNAVAILABLE");
+      }
+    }
     const config = configStore.update(payload);
     pluginRuntime.notifyLanguageChanged(config.ui.language);
     return config;
@@ -107,18 +114,29 @@ function registerCoreIpc(options) {
   handle("plugins:list", async () => pluginRegistry.listInstalled());
   handle("plugins:getState", async () => pluginService.getState());
   handle("plugins:checkCatalog", async () => pluginService.checkCatalog());
-  handle("plugins:install", async (payload = {}) => pluginService.install(payload.releaseId));
-  handle("plugins:uninstall", async (payload = {}) => pluginService.uninstall(payload.pluginId));
+  handle("plugins:install", async (payload = {}) => { await biometricService?.requireSensitiveAction(); return pluginService.install(payload.releaseId); });
+  handle("plugins:uninstall", async (payload = {}) => { await biometricService?.requireSensitiveAction(); return pluginService.uninstall(payload.pluginId); });
   handle("plugins:open", async (payload = {}) => pluginService.open(payload.pluginId));
   handle("vault:status", async () => vaultStore.status());
-  handle("vault:create", async (payload = {}) => vaultStore.create(payload.password));
-  handle("vault:unlock", async (payload = {}) => vaultStore.unlock(payload.password));
+  handle("vault:create", async (payload = {}) => { const status = await vaultStore.create(payload.password); vaultLockController?.activity(); return status; });
+  handle("vault:unlock", async (payload = {}) => { biometricService?.cancel(); const status = await vaultStore.unlock(payload.password); vaultLockController?.activity(); return status; });
+  handle("biometrics:status", sessionResult(() => biometricService.getStatus()));
+  handle("biometrics:enable", sessionResult(() => biometricService.enable()));
+  handle("biometrics:disable", sessionResult(() => biometricService.disable()));
+  handle("biometrics:unlock", sessionResult(async () => {
+    const status = await biometricService.unlock(); vaultLockController?.activity(); return status;
+  }));
+  handle("biometrics:authenticate", sessionResult(() => biometricService.authenticateSensitiveAction()));
   handle("vault:lock", async () => {
+    if (vaultLockController) return vaultLockController.lock();
     pluginRuntime.closeAll();
     await sessionManager.disconnectAll("vault-lock");
     return vaultStore.lock();
   });
   handle("vault:reset", async (payload = {}) => {
+    if (payload.confirmation !== "SMAZAT") throw Object.assign(new Error("Vault reset confirmation is invalid."), { code: "VAULT_RESET_CONFIRMATION_REQUIRED" });
+    if (vaultStore.status().unlocked) await biometricService?.requireSensitiveAction();
+    await biometricService?.disable({ reset: true });
     pluginRuntime.closeAll();
     await sessionManager.disconnectAll("vault-reset");
     const status = vaultStore.reset(payload.confirmation);
@@ -127,7 +145,7 @@ function registerCoreIpc(options) {
   });
   handle("profiles:list", async () => profileService.list());
   handle("profiles:save", async (payload = {}) => profileService.save(payload));
-  handle("profiles:delete", async (payload = {}) => profileService.delete(String(payload.id || "")));
+  handle("profiles:delete", async (payload = {}) => { await biometricService?.requireSensitiveAction(); return profileService.delete(String(payload.id || "")); });
   handle("profiles:selectPrivateKey", async () => {
     const mainWindow = getMainWindow();
     const copy = PRIVATE_KEY_DIALOG_COPY[configStore.get().ui.language] || PRIVATE_KEY_DIALOG_COPY.cs;
@@ -178,6 +196,7 @@ function registerCoreIpc(options) {
   handle("updates:select", async (payload = {}) => updateService.select(payload.id));
   handle("updates:download", async () => updateService.download());
   handle("updates:install", async () => {
+    await biometricService?.requireSensitiveAction();
     // The renderer supplies neither a path nor a verification flag. The main
     // process re-hashes and re-verifies its internally tracked artifact here.
     const filePath = await updateService.prepareInstallerLaunch();

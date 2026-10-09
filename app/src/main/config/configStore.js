@@ -24,7 +24,8 @@ const DEFAULT_CONFIG = Object.freeze({
   },
   plugins: {
     channel: "alpha"
-  }
+  },
+  security: { autoLockMinutes: 0, lockOnBlur: false, requireSystemAuthentication: false }
 });
 
 function clone(value) {
@@ -65,7 +66,12 @@ function normalizeConfig(input = {}) {
       lastLaunchedRelease: normalizeReleaseMarker(source.updates?.lastLaunchedRelease),
       baseUrls: clone(DEFAULT_CONFIG.updates.baseUrls)
     },
-    plugins: { channel: pluginChannel }
+    plugins: { channel: pluginChannel },
+    security: {
+      autoLockMinutes: [0, 1, 5, 10, 15, 30, 60].includes(source.security?.autoLockMinutes) ? source.security.autoLockMinutes : 0,
+      lockOnBlur: source.security?.lockOnBlur === true,
+      requireSystemAuthentication: source.security?.requireSystemAuthentication === true
+    }
   };
 }
 
@@ -105,7 +111,8 @@ class ConfigStore {
         channel: updatePatch.channel ?? this.value.updates.channel,
         autoCheck: updatePatch.autoCheck ?? this.value.updates.autoCheck
       },
-      plugins: { ...this.value.plugins, ...(patch.plugins || {}) }
+      plugins: { ...this.value.plugins, ...(patch.plugins || {}) },
+      security: { ...this.value.security, ...(patch.security || {}) }
     };
     this.value = normalizeConfig(next);
     this.save();

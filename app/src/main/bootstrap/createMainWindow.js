@@ -39,7 +39,7 @@ function createMainWindow(options = {}) {
     minWidth: 960,
     minHeight: 640,
     backgroundColor: "#07111f",
-    icon: options.icon,
+    icon: options.icon || path.join(__dirname, "..", "..", "..", "build", "icon.png"),
     show: false,
     ...windowChromeOptions(),
     webPreferences: {

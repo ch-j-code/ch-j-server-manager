@@ -14,7 +14,7 @@
     "test": "node --test",
     "test:diagnostics:ui": "electron scripts/smokeDiagnostics.js",
     "licenses:generate": "node scripts/generateThirdPartyNotices.js",
-    "prepare:release": "npm run licenses:generate && npm run stamp:build",
+    "prepare:release": "npm run licenses:generate && npm run biometrics:build && npm run stamp:build",
     "stamp:build": "node scripts/stampBuild.js",
     "prebuild": "npm run prepare:release",
     "build": "electron-builder",
@@ -27,7 +27,11 @@
     "dist:mac": "npm run build:mac",
     "dist:win": "npm run build:win",
     "dist:linux": "npm run build:linux",
-    "package:mac:installer": "node scripts/packageMacInstaller.js"
+    "package:mac:installer": "node scripts/packageMacInstaller.js",
+    "biometrics:build": "node scripts/buildBiometricHelpers.js",
+    "prestart": "npm run biometrics:build",
+    "predev": "npm run biometrics:build",
+    "test:biometrics:ui": "electron scripts/smokeBiometrics.js"
   },
   "dependencies": {
     "@noble/hashes": "2.3.0",
@@ -90,6 +94,15 @@
       {
         "from": "ch-j-signing-public.asc",
         "to": "signing/ch-j-signing-public.asc"
+      },
+      {
+        "from": "build/biometrics",
+        "to": "biometrics",
+        "filter": [
+          "chj-biometric",
+          "chj-biometric.exe",
+          "linux.py"
+        ]
       }
     ],
     "afterPack": "scripts/afterPack.js",
@@ -124,10 +137,13 @@
             "arm64"
           ]
         }
-      ]
+      ],
+      "extendInfo": {
+        "NSLocalNetworkUsageDescription": "CH-J Server Manager connects to your servers over SSH/SFTP and runs network diagnostics on the local network."
+      }
     },
     "linux": {
-      "icon": "build/icon.png",
+      "icon": "build/linux-icons",
       "target": [
         {
           "target": "deb",
@@ -139,7 +155,20 @@
       "category": "Utility",
       "synopsis": "SSH and server management application",
       "maintainer": "Josef Chudy <josef@ch-j.de>",
-      "syncDesktopName": true
+      "syncDesktopName": true,
+      "desktop": {
+        "entry": {
+          "StartupWMClass": "ch-j-server-manager"
+        }
+      }
+    },
+    "deb": {
+      "recommends": [
+        "python3-gi",
+        "gir1.2-secret-1",
+        "gnome-keyring",
+        "fprintd"
+      ]
     }
   },
   "keywords": [
